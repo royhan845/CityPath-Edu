@@ -44,27 +44,125 @@ interface PathfindingGridProps {
     drawMode?: string; 
     rotationStep: number;
     isMobile: boolean;
+    onFinishAnimation?: (visitedCount: number, pathLength: number) => void;
 }
 
 export default function PathfindingGrid({ 
-    triggerRun, algorithm, clearPathTrigger, clearBoardTrigger, drawMode, rotationStep, isMobile
+    triggerRun, algorithm, clearPathTrigger, clearBoardTrigger, drawMode, rotationStep, isMobile, onFinishAnimation
 }: PathfindingGridProps) {
 
     const gridOffsetZ = isMobile ? -4 : 0;
     const meshRef = useRef<THREE.InstancedMesh>(null!)
-    const [nodes, setNodes] = useState(() => {
-        const initial = Array(GRID_SIZE * GRID_SIZE).fill(0)
-        initial[0] = 1; initial[GRID_SIZE * GRID_SIZE - 1] = 2; return initial;
-    });
+    
+    const generateCityData = () => {
+        const initial = Array(GRID_SIZE * GRID_SIZE).fill(0);
+        const rots: Record<number, number> = {};
+
+        for (let row = 0; row < GRID_SIZE; row++) {
+            for (let col = 0; col < GRID_SIZE; col++) {
+                const isHorizontalRoad = row % 4 === 0;
+                const isVerticalRoad = col % 5 === 0;
+                const isAlley = (row % 3 === 0) && (col % 3 === 0);
+                if (isHorizontalRoad || isVerticalRoad || isAlley) initial[row * GRID_SIZE + col] = -1;
+            }
+        }
+
+        const mid = Math.floor(GRID_SIZE / 2);
+        for (let r = mid - 2; r <= mid + 2; r++) {
+            for (let c = mid - 3; c <= mid + 3; c++) {
+                if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) initial[r * GRID_SIZE + c] = -1; 
+            }
+        }
+
+        const startIdx = 1 * GRID_SIZE + 1; 
+        const endIdx = (GRID_SIZE - 2) * GRID_SIZE + (GRID_SIZE - 2); 
+
+        const safeZone = [
+            startIdx, startIdx+1, startIdx+GRID_SIZE, startIdx+GRID_SIZE+1,
+            endIdx, endIdx-1, endIdx-GRID_SIZE, endIdx-GRID_SIZE-1
+        ];
+        safeZone.forEach(idx => { if(idx >= 0 && idx < initial.length) initial[idx] = -1; });
+
+        const buildingsList = Object.values(BUILDINGS).filter(b => b.id >= 7);
+
+        if (buildingsList.length > 0) {
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const idx = row * GRID_SIZE + col;
+                    
+                    if (initial[idx] === 0) { 
+                        const bld = buildingsList[(row * 7 + col) % buildingsList.length];
+                        const rStep = (row + col) % 4; 
+
+                        const actualSizeX = (rStep % 2 !== 0) ? bld.sizeZ : bld.sizeX;
+                        const actualSizeZ = (rStep % 2 !== 0) ? bld.sizeX : bld.sizeZ;
+
+                        if (row + actualSizeX > GRID_SIZE || col + actualSizeZ > GRID_SIZE) continue;
+
+                        let canPlace = true;
+                        const fp = [];
+                        for (let r = 0; r < actualSizeX; r++) {
+                            for (let c = 0; c < actualSizeZ; c++) {
+                                const checkIdx = (row + r) * GRID_SIZE + (col + c);
+                                if (initial[checkIdx] !== 0) {
+                                    canPlace = false;
+                                    break;
+                                }
+                                fp.push(checkIdx);
+                            }
+                            if (!canPlace) break;
+                        }
+
+                        if (canPlace) {
+                            fp.forEach(i => initial[i] = 3); 
+                            initial[idx] = bld.id; 
+                            rots[idx] = rStep; 
+                        }
+                    }
+                }
+            }
+        }
+
+        for (let i = 0; i < initial.length; i++) {
+            if (initial[i] === -1) initial[i] = 0;
+        }
+
+        initial[startIdx] = 1; 
+        initial[endIdx] = 2; 
+
+        return { initialNodes: initial, initialRots: rots };
+    };
+
+    const initialCityData = useMemo(() => generateCityData(), []);
+    
+    const [nodes, setNodes] = useState(initialCityData.initialNodes);
+    const [nodeRotations, setNodeRotations] = useState<Record<number, number>>(initialCityData.initialRots);
 
     const [hoveredNode, setHoveredNode] = useState<number | null>(null)
     const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
-    const [nodeRotations, setNodeRotations] = useState<Record<number, number>>({});
     const [walkPath, setWalkPath] = useState<number[]>([]);
+    
     const [isCharNear, setIsCharNear] = useState(false);
+    
+    const [lastStats, setLastStats] = useState({ visited: 0, path: 0 });
 
     const prevRotRef = useRef(rotationStep);
+    const hasShowPopup = useRef(false);
     
+    useEffect(() => {
+        if (isCharNear && walkPath.length > 0 && !hasShowPopup.current) {
+            
+            hasShowPopup.current = true;
+            
+            const timer = setTimeout(() => {
+                if (onFinishAnimation) {
+                    onFinishAnimation(lastStats.visited, lastStats.path);
+                }
+            }, 1200); 
+            return () => clearTimeout(timer);
+        }
+    }, [isCharNear, walkPath, lastStats, onFinishAnimation]);
+
     useEffect(() => {
         if (selectedNodeId !== null && rotationStep !== prevRotRef.current) {
             setNodes(prev => {
@@ -73,7 +171,9 @@ export default function PathfindingGrid({
                 const bld = Object.values(BUILDINGS).find(b => b.id === bldId);
                 
                 if (bld) {
-                    const oldFp = getDynamicFootprint(selectedNodeId, GRID_SIZE, bld.sizeX, bld.sizeZ, prevRotRef.current);
+                    const currentBldRot = nodeRotations[selectedNodeId] || 0;
+                    
+                    const oldFp = getDynamicFootprint(selectedNodeId, GRID_SIZE, bld.sizeX, bld.sizeZ, currentBldRot);
                     oldFp.forEach(idx => newNodes[idx] = 0); 
 
                     const newFp = getDynamicFootprint(selectedNodeId, GRID_SIZE, bld.sizeX, bld.sizeZ, rotationStep);
@@ -92,19 +192,52 @@ export default function PathfindingGrid({
             });
         }
         prevRotRef.current = rotationStep;
-    }, [rotationStep, selectedNodeId]);
+    }, [rotationStep, selectedNodeId]); // eslint-disable-line
 
-    useEffect(() => { if (clearPathTrigger) setNodes((prev) => prev.map(n => (n === 4 || n === 5) ? 0 : n)); }, [clearPathTrigger]);
+    useEffect(() => { 
+        if (clearPathTrigger) {
+            hasShowPopup.current = false;
+            setNodes((prev) => {
+                const newNodes = prev.map(n => (n === 4 || n === 5) ? 0 : n);
+                
+                const oldStart = newNodes.indexOf(1);
+                const oldEnd = newNodes.indexOf(2);
+                if (oldStart !== -1) newNodes[oldStart] = 0;
+                if (oldEnd !== -1) newNodes[oldEnd] = 0;
+
+                const defaultStart = 1 * GRID_SIZE + 1;
+                const defaultEnd = (GRID_SIZE - 2) * GRID_SIZE + (GRID_SIZE - 2);
+                newNodes[defaultStart] = 1;
+                newNodes[defaultEnd] = 2;
+
+                return newNodes;
+            });
+            setWalkPath([]);
+            setIsCharNear(false);
+        }
+    }, [clearPathTrigger]);
     
     useEffect(() => {
         if (clearBoardTrigger) {
-            setNodes((prev) => prev.map(n => (n === 1 || n === 2) ? n : 0));
-            setNodeRotations({}); setSelectedNodeId(null);
+            hasShowPopup.current = false;
+            setNodes(() => {
+                const emptyCity = Array(GRID_SIZE * GRID_SIZE).fill(0);
+                const defaultStart = 1 * GRID_SIZE + 1;
+                const defaultEnd = (GRID_SIZE - 2) * GRID_SIZE + (GRID_SIZE - 2);
+                emptyCity[defaultStart] = 1;
+                emptyCity[defaultEnd] = 2;
+                return emptyCity;
+            });
+            setNodeRotations({}); 
+            setSelectedNodeId(null);
+            setWalkPath([]);
+            setIsCharNear(false);
         }
     }, [clearBoardTrigger]);
 
     useEffect(() => {
         if (triggerRun) {
+            hasShowPopup.current = false;
             setNodes((prev) => prev.map(n => (n === 4 || n === 5) ? 0 : n))
             setTimeout(() => {
                 let result = { visitedNodesInOrder: [] as number[], shortestPath: [] as number[] };
@@ -121,6 +254,8 @@ export default function PathfindingGrid({
     const animateAlgorithm = (visitedNodes: number[], pathNodes: number[]) => {
         setWalkPath([]);
         setIsCharNear(false);
+        
+        setLastStats({ visited: visitedNodes.length, path: pathNodes.length });
 
         for (let i = 0; i < visitedNodes.length; i++) {
             setTimeout(() => setNodes((prev) => { 
@@ -140,7 +275,13 @@ export default function PathfindingGrid({
             }), timeToFinishScan + (50 * i));
         }
 
-        setTimeout(() => setWalkPath(pathNodes), timeToFinishScan + (50 * pathNodes.length));
+        setTimeout(() => {
+            if (pathNodes.length === 0) {
+                if (onFinishAnimation) onFinishAnimation(visitedNodes.length, 0);
+            } else {
+                setWalkPath(pathNodes);
+            }
+        }, timeToFinishScan + (50 * pathNodes.length));
     };
 
     const getAnchorFromId = (id: number, nodesArr: number[], rots: Record<number, number>) => {
@@ -219,12 +360,7 @@ export default function PathfindingGrid({
 
     const handlePointerDown = (e: any) => {
         e.stopPropagation();
-
-        try {
-            if (e.target && e.pointerId !== undefined) {
-                e.target.releasePointerCapture(e.pointerId);
-            }
-        } catch (err) {}
+        try { if (e.target && e.pointerId !== undefined) e.target.releasePointerCapture(e.pointerId); } catch (err) {}
 
         const id = e.instanceId;
         if (id === undefined) return;
@@ -290,12 +426,16 @@ export default function PathfindingGrid({
                     if (newSelectedId === anchorId) newSelectedId = null;
                 }
             }
-        } 
+            else if (newNodes[id] === 6 || newNodes[id] === 3) {
+                newNodes[id] = 0;
+                isStateChanged = true;
+                if (newSelectedId === id) newSelectedId = null;
+            }
+        }
         else if (drawMode?.startsWith("bld-")) {
             const bldConfig = BUILDINGS[drawMode];
             if (bldConfig) {
                 const footprint = getDynamicFootprint(id, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, rotationStep);
-                
                 const isAreaClear = footprint.length === (bldConfig.sizeX * bldConfig.sizeZ) && footprint.every(idx => isNodeEmpty(newNodes[idx]));
                 
                 if (isAreaClear) {
@@ -313,11 +453,8 @@ export default function PathfindingGrid({
                 newNodes[id] = 1;
                 isStateChanged = true;
 
-                newNodes.forEach((n, i) => {
-                    if (n === 4 || n === 5) newNodes[i] = 0; 
-                });
-                setWalkPath([]);
-                setIsCharNear(false);
+                newNodes.forEach((n, i) => { if (n === 4 || n === 5) newNodes[i] = 0; });
+                setWalkPath([]); setIsCharNear(false);
             }
         }
         else if (drawMode === "end") {
@@ -327,11 +464,8 @@ export default function PathfindingGrid({
                 newNodes[id] = 2;
                 isStateChanged = true;
 
-                newNodes.forEach((n, i) => {
-                    if (n === 4 || n === 5) newNodes[i] = 0; 
-                });
-                setWalkPath([]);
-                setIsCharNear(false);
+                newNodes.forEach((n, i) => { if (n === 4 || n === 5) newNodes[i] = 0; });
+                setWalkPath([]); setIsCharNear(false);
             }
         }
 
@@ -350,9 +484,7 @@ export default function PathfindingGrid({
 
         let bldEntry = null;
 
-        if (drawMode?.startsWith("bld-")) {
-            bldEntry = BUILDINGS[drawMode];
-        } 
+        if (drawMode?.startsWith("bld-")) bldEntry = BUILDINGS[drawMode];
         else if (drawMode === "select" && selectedNodeId !== null) {
             const bldId = nodes[selectedNodeId];
             bldEntry = Object.values(BUILDINGS).find(b => b.id === bldId);
