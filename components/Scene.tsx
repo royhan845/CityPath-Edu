@@ -18,46 +18,48 @@ export default function Scene() {
 
     const [isExpanded, setIsExpanded] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
-
-    const [stats, setStats] = useState<{ visited: number, path: number } | null>(null);
-
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const handleVisualize = () => { setTriggerRun(true); setTimeout(() => setTriggerRun(false), 1000); }
-    const handleClearPath = () => { setClearPathTrigger(true); setStats(null); setTimeout(() => setClearPathTrigger(false), 100); }
-    const handleClearBoard = () => { setClearBoardTrigger(true); setStats(null); setTimeout(() => setClearBoardTrigger(false), 100); }
+    const [stats, setStats] = useState<{visited: number, path: number} | null>(null);
+
+    // --- STATE TUTORIAL ---
+    const [showTutorial, setShowTutorial] = useState(false);
+    const [tutorialStep, setTutorialStep] = useState(0);
+
+    const tutorialSlides = [
+        {
+            title: "Konfigurasi Environment",
+            desc: "Gunakan instrumen 'Klik Gedung' dan 'Katalog' di panel kiri untuk mendesain topologi rintangan. Semakin kompleks kotamu, semakin menantang untuk algoritmanya!",
+            image: "/images/tutorial-1.png"
+        },
+        {
+            title: "Penempatan Entitas",
+            desc: "Pilih instrumen 'Titik Awal' (Karakter) atau 'Titik Tujuan' (Target), lalu klik di area tanah kosong untuk memindahkan mereka ke posisi yang strategis.",
+            image: "/images/tutorial-2.png"
+        },
+        {
+            title: "Analisis Algoritma",
+            desc: "Pilih metode algoritma dari menu dropdown, lalu eksekusi. Kamu bisa membandingkan mana algoritma yang paling efisien dalam memecahkan labirin buatanmu.",
+            image: "/images/tutorial-3.png"
+        }
+    ];
 
     const algorithmDetails: Record<string, { title: string, desc: string, icon: string, color: string }> = {
-        astar: { 
-            title: "A* Search", 
-            icon: "⭐", 
-            color: "text-emerald-400", 
-            desc: "A* adalah algoritma paling cerdas. Ia menggunakan 'insting' (heuristik) untuk menebak arah target, sehingga ia tidak perlu mengecek jalan buntu jika tidak terpaksa." 
-        },
-        greedy: { 
-            title: "Greedy Best-First", 
-            icon: "🏃‍♂️", color: "text-yellow-400", 
-            desc: "Greedy sangat 'bernafsu' mengejar target. Ia sangat cepat, tapi kelemahannya ia sering terjebak di jalan buntu (bentuk U) karena tidak memikirkan gambaran rute secara keseluruhan." 
-        },
-        dijkstra: { 
-            title: "Dijkstra", 
-            icon: "🌊", 
-            color: "text-cyan-400", 
-            desc: "Dijkstra bekerja seperti gelombang air, menyebar ke segala arah secara merata. Ia pasti menemukan jalur terpendek, tapi sangat lambat karena ia mengecek semua area tanpa tahu di mana targetnya." 
-        },
-        bfs: { 
-            title: "Breadth-First", 
-            icon: "⭕", 
-            color: "text-blue-400", 
-            desc: "BFS mirip dengan Dijkstra pada grid tanpa bobot. Ia mengecek tetangga lapis demi lapis. Sangat andal, tapi kurang efisien untuk peta yang luas." 
-        },
-        dfs: { 
-            title: "Depth-First", 
-            icon: "⛏️", 
-            color: "text-rose-400", 
-            desc: "DFS berjalan seperti orang tersesat di labirin: ia menyusuri satu lorong sedalam-dalamnya sampai mentok, lalu putar balik. Sangat buruk untuk mencari rute tercepat." 
-        }
+        astar: { title: "A* Search", icon: "⭐", color: "text-emerald-400", desc: "A* adalah algoritma heuristik paling optimal. Ia mengevaluasi jarak tempuh dan menebak arah target, sehingga sangat efisien tanpa harus mengecek area yang tidak relevan." },
+        greedy: { title: "Greedy Best-First", icon: "🏃‍♂️", color: "text-yellow-400", desc: "Greedy secara agresif memprioritaskan area yang paling dekat dengan target. Sangat cepat, namun rawan terjebak pada jalan buntu (bentuk U) karena kurangnya evaluasi rute menyeluruh." },
+        dijkstra: { title: "Dijkstra", icon: "🌊", color: "text-cyan-400", desc: "Dijkstra menjamin penemuan rute terpendek dengan mengekspansi area secara radial (merata ke segala arah). Tingkat akurasinya absolut, namun komputasinya lambat pada peta terbuka." },
+        bfs: { title: "Breadth-First", icon: "⭕", color: "text-blue-400", desc: "BFS menelusuri grid lapis demi lapis layaknya riak air. Sangat andal untuk peta tanpa bobot jarak, namun kurang optimal untuk topologi yang luas." },
+        dfs: { title: "Depth-First", icon: "⛏️", color: "text-rose-400", desc: "DFS mengeksplorasi satu percabangan sedalam-dalamnya secara membabi buta sebelum mundur (backtracking). Sangat tidak disarankan untuk pencarian rute terpendek." }
     };
+
+    // --- AUTO SHOW TUTORIAL SAAT PERTAMA MASUK ---
+    useEffect(() => {
+        // Beri jeda 0.8 detik agar user melihat kota 3D-nya dulu, baru pop-up muncul
+        const timer = setTimeout(() => {
+            setShowTutorial(true);
+        }, 800);
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -87,9 +89,25 @@ export default function Scene() {
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
+    // --- HANDLER FUNGSI ---
+    // Tidak ada lagi interceptor di sini. Langsung jalankan algoritma.
+    const handleVisualize = () => {
+        setTriggerRun(true); 
+        setTimeout(() => setTriggerRun(false), 1000); 
+    }
+
+    const handleClearPath = () => { setClearPathTrigger(true); setStats(null); setTimeout(() => setClearPathTrigger(false), 100); }
+    const handleClearBoard = () => { setClearBoardTrigger(true); setStats(null); setTimeout(() => setClearBoardTrigger(false), 100); }
+
+    const closeTutorial = () => {
+        setShowTutorial(false);
+        // User dibiarkan bebas setelah tutorial tertutup, tidak otomatis menjalankan algoritma
+    }
+
     return (
-        <div className="relative h-screen w-full bg-slate-900 overflow-hidden font-sans">
+        <div className="relative h-[100dvh] w-full bg-slate-900 overflow-hidden font-sans">
             
+            {/* --- UI RESPONSIVE PANEL --- */}
             <div className={`absolute z-10 flex flex-col bg-slate-900/95 backdrop-blur-xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-slate-700 text-white transition-all duration-500 ease-in-out
                 bottom-0 left-0 right-0 rounded-t-3xl border-t 
                 ${isExpanded ? 'max-h-[65vh]' : 'max-h-[50px]'}
@@ -112,15 +130,22 @@ export default function Scene() {
                         <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-2">
                             City Editor v1.0
                         </span>
-                        <span className="text-xs text-slate-500 group-hover:text-emerald-400 font-bold transition-colors">
-                            {isExpanded ? '▼ HIDE' : '▶ SHOW'}
-                        </span>
+                        <div className="flex items-center gap-4">
+                            <span 
+                                onClick={(e) => { e.stopPropagation(); setTutorialStep(0); setShowTutorial(true); }}
+                                className="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-300 transition-colors"
+                            >
+                                📖 Panduan
+                            </span>
+                            <span className="text-xs text-slate-500 group-hover:text-emerald-400 font-bold transition-colors">
+                                {isExpanded ? '▼ HIDE' : '▶'}
+                            </span>
+                        </div>
                     </div>
                 </button>
                 
                 <div className={`flex flex-col gap-5 p-5 pt-2 overflow-y-auto hide-scrollbar transition-opacity duration-300 ${!isExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100 delay-100'}`}>
                     
-                    {/* BAGIAN 1: INFORMASI SIMULASI */}
                     <div className="flex flex-col gap-3">
                         <h1 className="text-xl font-black bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent hidden md:block">
                             Simulasi Pathfinding
@@ -142,7 +167,6 @@ export default function Scene() {
                         </button>
                     </div>
 
-                    {/* BAGIAN 2: TOOLBAR */}
                     <div className="flex flex-col gap-3 pt-4 border-t border-slate-800">
                         <label className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Instrumen Kontrol</label>
                         <div className="grid grid-cols-2 gap-3">
@@ -164,7 +188,6 @@ export default function Scene() {
                         </button>
                     </div>
 
-                    {/* BAGIAN 3: KATALOG */}
                     <div className="flex flex-col gap-2 pt-4 border-t border-slate-800">
                         <label className="text-[10px] text-slate-500 font-bold tracking-widest uppercase px-1">Katalog Environment</label>
                         <div ref={scrollRef} className="flex gap-4 overflow-x-auto hide-scrollbar pt-2 pb-4 px-2 cursor-grab active:cursor-grabbing select-none">
@@ -177,7 +200,6 @@ export default function Scene() {
                         </div>
                     </div>
 
-                    {/* BAGIAN 4: RESET */}
                     <div className="flex flex-col gap-3 pt-2 border-t border-slate-800">
                         <button 
                             onClick={handleClearPath} 
@@ -195,30 +217,75 @@ export default function Scene() {
                 </div>
             </div>
 
-            <Canvas camera={{ position: isMobile ? [0, 15, 30] : [0, 15, 30], fov: isMobile ? 55 : 25 }}>
-                <ambientLight intensity={1.5} />
-                <directionalLight position={[10, 20, 10]} intensity={2} />
-                {isMobile ? (
-                    <OrbitControls makeDefault minDistance={10} maxDistance={70} maxPolarAngle={Math.PI / 2.1} />
-                ) : (
-                    <MapControls makeDefault minDistance={10} maxDistance={70} panSpeed={1.5} />
-                )}
-                <DreiGrid position={[0, -0.11, 0]} infiniteGrid sectionSize={1} sectionColor="#334155" cellColor="#475569" />
-                <Sky sunPosition={[100, 20, 100]} />
-                <Suspense fallback={null}>
-                    <PathfindingGrid 
-                        triggerRun={triggerRun} 
-                        algorithm={algorithm} 
-                        clearPathTrigger={clearPathTrigger} 
-                        clearBoardTrigger={clearBoardTrigger} 
-                        drawMode={drawMode} 
-                        rotationStep={rotationStep} 
-                        isMobile={isMobile} 
-                        onFinishAnimation={(visited, path) => setStats({ visited, path })}
-                    />
-                </Suspense>
-            </Canvas>
+            {/* --- MODAL TUTORIAL / ONBOARDING --- */}
+            <div className={`absolute inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-md transition-all duration-500 ${showTutorial ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <div className={`bg-slate-900 border border-slate-700 p-6 md:p-8 rounded-3xl shadow-2xl max-w-lg w-full transform transition-all duration-500 delay-100 ${showTutorial ? 'translate-y-0 scale-100' : 'translate-y-10 scale-95'}`}>
+                    
+                    {/* Progress Dots */}
+                    <div className="flex justify-center gap-2 mb-6">
+                        {tutorialSlides.map((_, idx) => (
+                            <div key={idx} className={`h-2 rounded-full transition-all duration-300 ${tutorialStep === idx ? 'w-8 bg-emerald-500' : 'w-2 bg-slate-700'}`}></div>
+                        ))}
+                    </div>
 
+                    {/* Image Placeholder */}
+                    <div className="w-full aspect-video bg-slate-800 rounded-2xl mb-6 overflow-hidden border border-slate-700 flex items-center justify-center relative">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600 font-bold">
+                            <span className="text-3xl mb-2">📸</span>
+                            <span>Ilustrasi {tutorialStep + 1}</span>
+                        </div>
+                        <img 
+                            src={tutorialSlides[tutorialStep].image} 
+                            alt={`Tutorial ${tutorialStep + 1}`} 
+                            className="w-full h-full object-cover relative z-10"
+                            onError={(e) => e.currentTarget.style.display = 'none'} 
+                        />
+                    </div>
+
+                    {/* Text Content */}
+                    <div className="min-h-[100px]">
+                        <h2 className="text-2xl font-black text-white mb-2 tracking-tight">{tutorialSlides[tutorialStep].title}</h2>
+                        <p className="text-slate-400 text-sm leading-relaxed">{tutorialSlides[tutorialStep].desc}</p>
+                    </div>
+
+                    {/* Navigation Buttons */}
+                    <div className="flex gap-3 mt-8">
+                        <button 
+                            onClick={() => setTutorialStep(prev => Math.max(0, prev - 1))}
+                            className={`flex-1 py-3.5 rounded-xl font-bold transition-all border ${tutorialStep === 0 ? 'opacity-0 pointer-events-none' : 'bg-slate-800 text-white border-slate-700 hover:bg-slate-700'}`}
+                        >
+                            Sebelumnya
+                        </button>
+                        
+                        {tutorialStep < tutorialSlides.length - 1 ? (
+                            <button 
+                                onClick={() => setTutorialStep(prev => prev + 1)}
+                                className="flex-1 py-3.5 rounded-xl font-bold transition-all bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-400 shadow-lg active:scale-95"
+                            >
+                                Selanjutnya
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={closeTutorial}
+                                className="flex-1 py-3.5 rounded-xl font-bold transition-all bg-cyan-500 hover:bg-cyan-600 text-white border border-cyan-400 shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                Mulai Eksplorasi
+                            </button>
+                        )}
+                    </div>
+                    
+                    {/* Skip Button */}
+                    <button 
+                        onClick={closeTutorial}
+                        className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+                        title="Tutup Tutorial"
+                    >
+                        ✖
+                    </button>
+                </div>
+            </div>
+
+            {/* --- MODAL LAPORAN EDUKASI (MUNCUL SETELAH SIMULASI) --- */}
             <div className={`absolute inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm transition-all duration-500 ${stats ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <div className={`bg-slate-900 border border-slate-700 p-8 rounded-3xl shadow-2xl max-w-md w-full transform transition-all duration-500 delay-100 ${stats ? 'translate-y-0 scale-100' : 'translate-y-10 scale-95'}`}>
                     
@@ -251,10 +318,25 @@ export default function Scene() {
                         onClick={() => setStats(null)}
                         className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl transition-all shadow-md active:scale-95 border border-slate-600"
                     >
-                        Tutup & Coba Algoritma Lain
+                        Tutup & Evaluasi Ulang
                     </button>
                 </div>
             </div>
+
+            <Canvas dpr={[1, 1.5]} camera={{ position: isMobile ? [0, 15, 30] : [0, 15, 30], fov: isMobile ? 55 : 25 }}>
+                <ambientLight intensity={1.5} />
+                <directionalLight position={[10, 20, 10]} intensity={2} />
+                {isMobile ? (
+                    <OrbitControls makeDefault minDistance={10} maxDistance={70} maxPolarAngle={Math.PI / 2.1} />
+                ) : (
+                    <MapControls makeDefault minDistance={10} maxDistance={70} panSpeed={1.5} />
+                )}
+                <DreiGrid position={[0, -0.11, 0]} infiniteGrid sectionSize={1} sectionColor="#334155" cellColor="#475569" />
+                <Sky sunPosition={[100, 20, 100]} />
+                <Suspense fallback={null}>
+                    <PathfindingGrid triggerRun={triggerRun} algorithm={algorithm} clearPathTrigger={clearPathTrigger} clearBoardTrigger={clearBoardTrigger} drawMode={drawMode} rotationStep={rotationStep} isMobile={isMobile} onFinishAnimation={(visited, path) => setStats({ visited, path })} />
+                </Suspense>
+            </Canvas>
         </div>
     )
 }
