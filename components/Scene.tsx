@@ -323,7 +323,7 @@ export default function Scene() {
                 </div>
             </div>
 
-            <Canvas dpr={[1, 1.5]} camera={{ position: isMobile ? [0, 15, 30] : [0, 15, 30], fov: isMobile ? 55 : 25 }}>
+            <Canvas dpr={[1, 1.5]}  camera={{ position: isMobile ? [0, 15, 30] : [0, 15, 30], fov: isMobile ? 55 : 25 }}>
                 <ambientLight intensity={1.5} />
                 <directionalLight position={[10, 20, 10]} intensity={2} />
                 {isMobile ? (

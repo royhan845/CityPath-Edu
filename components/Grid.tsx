@@ -143,16 +143,17 @@ export default function PathfindingGrid({
     const [walkPath, setWalkPath] = useState<number[]>([]);
     
     const [isCharNear, setIsCharNear] = useState(false);
-    
     const [lastStats, setLastStats] = useState({ visited: 0, path: 0 });
 
     const prevRotRef = useRef(rotationStep);
-    const hasShowPopup = useRef(false);
+    const hasShownPopup = useRef(false);
+
+    const [isAnimating, setIsAnimating] = useState(false);
     
     useEffect(() => {
-        if (isCharNear && walkPath.length > 0 && !hasShowPopup.current) {
-            
-            hasShowPopup.current = true;
+        if (isCharNear && walkPath.length > 0 && !hasShownPopup.current) {
+            hasShownPopup.current = true;
+            setIsAnimating(false);
             
             const timer = setTimeout(() => {
                 if (onFinishAnimation) {
@@ -164,7 +165,7 @@ export default function PathfindingGrid({
     }, [isCharNear, walkPath, lastStats, onFinishAnimation]);
 
     useEffect(() => {
-        if (selectedNodeId !== null && rotationStep !== prevRotRef.current) {
+        if (selectedNodeId !== null && rotationStep !== prevRotRef.current && !isAnimating) {
             setNodes(prev => {
                 const newNodes = [...prev];
                 const bldId = newNodes[selectedNodeId];
@@ -192,11 +193,13 @@ export default function PathfindingGrid({
             });
         }
         prevRotRef.current = rotationStep;
-    }, [rotationStep, selectedNodeId]); // eslint-disable-line
+    }, [rotationStep, selectedNodeId, isAnimating]);
 
     useEffect(() => { 
         if (clearPathTrigger) {
-            hasShowPopup.current = false;
+            hasShownPopup.current = false; 
+            setIsAnimating(false);
+            
             setNodes((prev) => {
                 const newNodes = prev.map(n => (n === 4 || n === 5) ? 0 : n);
                 
@@ -219,7 +222,9 @@ export default function PathfindingGrid({
     
     useEffect(() => {
         if (clearBoardTrigger) {
-            hasShowPopup.current = false;
+            hasShownPopup.current = false;
+            setIsAnimating(false);
+            
             setNodes(() => {
                 const emptyCity = Array(GRID_SIZE * GRID_SIZE).fill(0);
                 const defaultStart = 1 * GRID_SIZE + 1;
@@ -237,7 +242,9 @@ export default function PathfindingGrid({
 
     useEffect(() => {
         if (triggerRun) {
-            hasShowPopup.current = false;
+            hasShownPopup.current = false; 
+            setIsAnimating(true);
+            
             setNodes((prev) => prev.map(n => (n === 4 || n === 5) ? 0 : n))
             setTimeout(() => {
                 let result = { visitedNodesInOrder: [] as number[], shortestPath: [] as number[] };
@@ -277,6 +284,7 @@ export default function PathfindingGrid({
 
         setTimeout(() => {
             if (pathNodes.length === 0) {
+                setIsAnimating(false);
                 if (onFinishAnimation) onFinishAnimation(visitedNodes.length, 0);
             } else {
                 setWalkPath(pathNodes);
@@ -317,25 +325,27 @@ export default function PathfindingGrid({
         let hoverFootprint: number[] = [];
         let isHoverValid = false;
 
-        if (drawMode?.startsWith("bld-") && hoveredNode !== null) {
-            const bldConfig = BUILDINGS[drawMode];
-            if (bldConfig) {
-                hoverFootprint = getDynamicFootprint(hoveredNode, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, rotationStep);
-                isHoverValid = hoverFootprint.length === (bldConfig.sizeX * bldConfig.sizeZ) && hoverFootprint.every(idx => isNodeEmpty(nodes[idx]));
+        if (!isAnimating) {
+            if (drawMode?.startsWith("bld-") && hoveredNode !== null) {
+                const bldConfig = BUILDINGS[drawMode];
+                if (bldConfig) {
+                    hoverFootprint = getDynamicFootprint(hoveredNode, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, rotationStep);
+                    isHoverValid = hoverFootprint.length === (bldConfig.sizeX * bldConfig.sizeZ) && hoverFootprint.every(idx => isNodeEmpty(nodes[idx]));
+                }
             }
-        }
-        else if (drawMode === "select" && selectedNodeId !== null && hoveredNode !== null) {
-            const bldId = nodes[selectedNodeId];
-            const bldConfig = Object.values(BUILDINGS).find(b => b.id === bldId);
-            if (bldConfig) {
-                hoverFootprint = getDynamicFootprint(hoveredNode, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, rotationStep);
-                const currentFp = getDynamicFootprint(selectedNodeId, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, nodeRotations[selectedNodeId] || 0);
-                isHoverValid = hoverFootprint.length === (bldConfig.sizeX * bldConfig.sizeZ) && hoverFootprint.every(idx => isNodeEmpty(nodes[idx]) || currentFp.includes(idx));
+            else if (drawMode === "select" && selectedNodeId !== null && hoveredNode !== null) {
+                const bldId = nodes[selectedNodeId];
+                const bldConfig = Object.values(BUILDINGS).find(b => b.id === bldId);
+                if (bldConfig) {
+                    hoverFootprint = getDynamicFootprint(hoveredNode, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, rotationStep);
+                    const currentFp = getDynamicFootprint(selectedNodeId, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, nodeRotations[selectedNodeId] || 0);
+                    isHoverValid = hoverFootprint.length === (bldConfig.sizeX * bldConfig.sizeZ) && hoverFootprint.every(idx => isNodeEmpty(nodes[idx]) || currentFp.includes(idx));
+                }
             }
-        }
-        else if ((drawMode === "start" || drawMode === "end") && hoveredNode !== null) {
-            hoverFootprint = [hoveredNode];
-            isHoverValid = isNodeEmpty(nodes[hoveredNode]);
+            else if ((drawMode === "start" || drawMode === "end") && hoveredNode !== null) {
+                hoverFootprint = [hoveredNode];
+                isHoverValid = isNodeEmpty(nodes[hoveredNode]);
+            }
         }
 
         let i = 0
@@ -359,6 +369,8 @@ export default function PathfindingGrid({
     })
 
     const handlePointerDown = (e: any) => {
+        if (isAnimating) return;
+
         e.stopPropagation();
         try { if (e.target && e.pointerId !== undefined) e.target.releasePointerCapture(e.pointerId); } catch (err) {}
 
@@ -480,7 +492,7 @@ export default function PathfindingGrid({
     }
 
     const renderGhost = () => {
-        if (hoveredNode === null) return null; 
+        if (isAnimating || hoveredNode === null) return null; 
 
         let bldEntry = null;
 
