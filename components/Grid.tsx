@@ -11,6 +11,7 @@ import AnimatedCharEnd from "./AnimatedCharEnd"
 import { runDijkstra, runAStar, runBFS, runDFS, runGreedyBFS } from "../utils/algorithms"
 import { playSound } from "../utils/audio"
 import { BUILDINGS, GRID_SIZE, GRID_HEIGHT, SURFACE_Y } from "../config/constants"
+import { time } from "console"
 
 Object.values(BUILDINGS).forEach((bld) => useGLTF.preload(bld.path));
 useGLTF.preload("/models/character/character-male-d.glb");
@@ -44,7 +45,7 @@ interface PathfindingGridProps {
     drawMode?: string; 
     rotationStep: number;
     isMobile: boolean;
-    onFinishAnimation?: (visitedCount: number, pathLength: number) => void;
+    onFinishAnimation?: (visitedCount: number, pathLength: number, timeMs: number) => void;
 }
 
 export default function PathfindingGrid({ 
@@ -143,7 +144,7 @@ export default function PathfindingGrid({
     const [walkPath, setWalkPath] = useState<number[]>([]);
     
     const [isCharNear, setIsCharNear] = useState(false);
-    const [lastStats, setLastStats] = useState({ visited: 0, path: 0 });
+    const [lastStats, setLastStats] = useState({ visited: 0, path: 0, time: 0 });
 
     const prevRotRef = useRef(rotationStep);
     const hasShownPopup = useRef(false);
@@ -157,7 +158,7 @@ export default function PathfindingGrid({
             
             const timer = setTimeout(() => {
                 if (onFinishAnimation) {
-                    onFinishAnimation(lastStats.visited, lastStats.path);
+                    onFinishAnimation(lastStats.visited, lastStats.path, lastStats.time);
                 }
             }, 1200); 
             return () => clearTimeout(timer);
@@ -199,21 +200,8 @@ export default function PathfindingGrid({
         if (clearPathTrigger) {
             hasShownPopup.current = false; 
             setIsAnimating(false);
-            
             setNodes((prev) => {
-                const newNodes = prev.map(n => (n === 4 || n === 5) ? 0 : n);
-                
-                const oldStart = newNodes.indexOf(1);
-                const oldEnd = newNodes.indexOf(2);
-                if (oldStart !== -1) newNodes[oldStart] = 0;
-                if (oldEnd !== -1) newNodes[oldEnd] = 0;
-
-                const defaultStart = 1 * GRID_SIZE + 1;
-                const defaultEnd = (GRID_SIZE - 2) * GRID_SIZE + (GRID_SIZE - 2);
-                newNodes[defaultStart] = 1;
-                newNodes[defaultEnd] = 2;
-
-                return newNodes;
+                return prev.map(n => (n === 4 || n === 5) ? 0 : n);
             });
             setWalkPath([]);
             setIsCharNear(false);
@@ -247,22 +235,28 @@ export default function PathfindingGrid({
             
             setNodes((prev) => prev.map(n => (n === 4 || n === 5) ? 0 : n))
             setTimeout(() => {
+                const startTime = performance.now();
+
                 let result = { visitedNodesInOrder: [] as number[], shortestPath: [] as number[] };
                 if (algorithm === "dijkstra") result = runDijkstra(nodes, GRID_SIZE)
                 else if (algorithm === "astar") result = runAStar(nodes, GRID_SIZE)
                 else if (algorithm === "bfs") result = runBFS(nodes, GRID_SIZE)
                 else if (algorithm === "dfs") result = runDFS(nodes, GRID_SIZE)
                 else if (algorithm === "greedy") result = runGreedyBFS(nodes, GRID_SIZE)
-                animateAlgorithm(result.visitedNodesInOrder, result.shortestPath);
+
+                const endTime = performance.now();
+                const execTime = endTime - startTime;
+
+                animateAlgorithm(result.visitedNodesInOrder, result.shortestPath, execTime);
             }, 100);
         }
     }, [triggerRun, algorithm]);
 
-    const animateAlgorithm = (visitedNodes: number[], pathNodes: number[]) => {
+    const animateAlgorithm = (visitedNodes: number[], pathNodes: number[], execTime: number) => {
         setWalkPath([]);
         setIsCharNear(false);
         
-        setLastStats({ visited: visitedNodes.length, path: pathNodes.length });
+        setLastStats({ visited: visitedNodes.length, path: pathNodes.length, time: execTime });
 
         for (let i = 0; i < visitedNodes.length; i++) {
             setTimeout(() => setNodes((prev) => { 
@@ -285,7 +279,7 @@ export default function PathfindingGrid({
         setTimeout(() => {
             if (pathNodes.length === 0) {
                 setIsAnimating(false);
-                if (onFinishAnimation) onFinishAnimation(visitedNodes.length, 0);
+                if (onFinishAnimation) onFinishAnimation(visitedNodes.length, 0, execTime);
             } else {
                 setWalkPath(pathNodes);
             }

@@ -20,9 +20,9 @@ export default function Scene() {
     const [isMobile, setIsMobile] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const [stats, setStats] = useState<{visited: number, path: number} | null>(null);
+    const [stats, setStats] = useState<{visited: number, path: number, time: number} | null>(null);
+    const [history, setHistory] = useState<{algo: string, visited: number, path: number, time: number}[]>([]);
 
-    // --- STATE TUTORIAL ---
     const [showTutorial, setShowTutorial] = useState(false);
     const [tutorialStep, setTutorialStep] = useState(0);
 
@@ -54,7 +54,6 @@ export default function Scene() {
 
     // --- AUTO SHOW TUTORIAL SAAT PERTAMA MASUK ---
     useEffect(() => {
-        // Beri jeda 0.8 detik agar user melihat kota 3D-nya dulu, baru pop-up muncul
         const timer = setTimeout(() => {
             setShowTutorial(true);
         }, 800);
@@ -90,18 +89,26 @@ export default function Scene() {
     }, [])
 
     // --- HANDLER FUNGSI ---
-    // Tidak ada lagi interceptor di sini. Langsung jalankan algoritma.
     const handleVisualize = () => {
         setTriggerRun(true); 
         setTimeout(() => setTriggerRun(false), 1000); 
     }
 
-    const handleClearPath = () => { setClearPathTrigger(true); setStats(null); setTimeout(() => setClearPathTrigger(false), 100); }
-    const handleClearBoard = () => { setClearBoardTrigger(true); setStats(null); setTimeout(() => setClearBoardTrigger(false), 100); }
+    const handleClearPath = () => { 
+        setClearPathTrigger(true); 
+        setStats(null); 
+        setTimeout(() => setClearPathTrigger(false), 100); 
+    }
+
+    const handleClearBoard = () => { 
+        setClearBoardTrigger(true); 
+        setStats(null); 
+        setHistory([]);
+        setTimeout(() => setClearBoardTrigger(false), 100); 
+    }
 
     const closeTutorial = () => {
         setShowTutorial(false);
-        // User dibiarkan bebas setelah tutorial tertutup, tidak otomatis menjalankan algoritma
     }
 
     return (
@@ -285,40 +292,139 @@ export default function Scene() {
                 </div>
             </div>
 
-            {/* --- MODAL LAPORAN EDUKASI (MUNCUL SETELAH SIMULASI) --- */}
-            <div className={`absolute inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm transition-all duration-500 ${stats ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                <div className={`bg-slate-900 border border-slate-700 p-8 rounded-3xl shadow-2xl max-w-md w-full transform transition-all duration-500 delay-100 ${stats ? 'translate-y-0 scale-100' : 'translate-y-10 scale-95'}`}>
+            {/* --- MODAL LAPORAN EDUKASI & PERBANDINGAN --- */}
+            <div className={`absolute inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-sm transition-all duration-500 ${stats ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <div className={`bg-slate-900 border border-slate-700 p-8 rounded-3xl shadow-2xl max-w-md w-full transform transition-all duration-500 delay-100 ${stats ? 'translate-y-0 scale-100' : 'translate-y-10 scale-95'} max-h-[90vh] overflow-y-auto hide-scrollbar`}>
                     
                     <div className="flex items-center gap-3 mb-6">
                         <span className="text-4xl">{algorithmDetails[algorithm]?.icon}</span>
                         <div>
-                            <h2 className="text-xl font-black text-white tracking-tight">Laporan Analisis</h2>
+                            <h2 className="text-xl font-black text-white tracking-tight">Hasil Eksekusi</h2>
                             <p className={`text-sm font-bold ${algorithmDetails[algorithm]?.color}`}>{algorithmDetails[algorithm]?.title}</p>
                         </div>
                     </div>
 
-                    <p className="text-slate-300 text-sm leading-relaxed mb-8">
+                    <p className="text-slate-300 text-sm leading-relaxed mb-6">
                         {algorithmDetails[algorithm]?.desc}
                     </p>
 
-                    <div className="grid grid-cols-2 gap-4 mb-8">
-                        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-2xl text-center">
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Blok Diperiksa</p>
-                            <p className="text-3xl font-black text-cyan-400">{stats?.visited} <span className="text-sm font-medium text-cyan-400/50">blok</span></p>
-                            <p className="text-[10px] text-slate-500 mt-1">Area yang dieksplorasi</p>
+                    <div className="grid grid-cols-3 gap-3 mb-6">
+                        <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-2xl text-center flex flex-col justify-center">
+                            <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Diperiksa</p>
+                            <p className="text-xl font-black text-cyan-400">{stats?.visited}</p>
+                            <p className="text-[9px] text-slate-500 mt-0.5">Blok</p>
                         </div>
-                        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-2xl text-center">
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Jarak Tempuh</p>
-                            <p className="text-3xl font-black text-emerald-400">{stats?.path} <span className="text-sm font-medium text-emerald-400/50">langkah</span></p>
-                            <p className="text-[10px] text-slate-500 mt-1">Panjang rute optimal</p>
+                        <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-2xl text-center flex flex-col justify-center">
+                            <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Rute</p>
+                            <p className="text-xl font-black text-emerald-400">{stats?.path}</p>
+                            <p className="text-[9px] text-slate-500 mt-0.5">Langkah</p>
+                        </div>
+                        <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-2xl text-center flex flex-col justify-center">
+                            <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Waktu</p>
+                            <p className="text-xl font-black text-amber-400">{stats?.time.toFixed(2)}</p>
+                            <p className="text-[9px] text-slate-500 mt-0.5">Milidetik</p>
                         </div>
                     </div>
 
+                    {/* --- RINGKASAN ANALISIS DINAMIS (GLOBAL) --- */}
+                    <div className="mb-6 bg-slate-800/80 border border-slate-600 p-4 rounded-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                        <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-2">💡 Ringkasan Analisis</h4>
+                        <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                            {history.length <= 1 ? (
+                                "Ini adalah eksekusi pertamamu pada labirin ini. Coba tutup jendela ini, pilih algoritma lain, dan sistem akan membandingkan performanya secara otomatis!"
+                            ) : (
+                                (() => {
+                                    const current = history[history.length - 1];
+                                    const pastHistory = history.slice(0, -1);
+                                    
+                                    // 1. Cari pemegang rekor dari riwayat sebelumnya
+                                    const bestVisited = pastHistory.reduce((prev, curr) => prev.visited < curr.visited ? prev : curr);
+                                    const fastestAlgo = pastHistory.reduce((prev, curr) => prev.time < curr.time ? prev : curr);
+                                    
+                                    let summaryElements = [];
+
+                                    // 2. Analisis Efisiensi (Blok)
+                                    if (current.visited < bestVisited.visited) {
+                                        summaryElements.push(<span key="eff" className="text-emerald-300"><b>Terbaik Sejauh Ini! 👑</b> Algoritma ini memecahkan rekor efisiensi, mengevaluasi <b>{bestVisited.visited - current.visited} blok lebih sedikit</b> dibandingkan rekor sebelumnya ({algorithmDetails[bestVisited.algo]?.title}).</span>);
+                                    } else if (current.visited === bestVisited.visited) {
+                                        summaryElements.push(<span key="eff" className="text-blue-300"><b>Setara Rekor Terbaik.</b> Tingkat efisiensi pemeriksaannya sangat optimal, sama-sama hanya mengecek <b>{current.visited} blok</b> layaknya {algorithmDetails[bestVisited.algo]?.title}.</span>);
+                                    } else {
+                                        summaryElements.push(<span key="eff" className="text-rose-300"><b>Lebih Boros Komputasi.</b> Algoritma ini memeriksa <b>{current.visited - bestVisited.visited} blok lebih banyak</b> dibandingkan algoritma paling efisien sejauh ini ({algorithmDetails[bestVisited.algo]?.title}).</span>);
+                                    }
+
+                                    // 3. Analisis Kecepatan (Waktu)
+                                    if (current.time < fastestAlgo.time) {
+                                        summaryElements.push(<span key="time" className="text-amber-300 ml-1">Menariknya, ia berhasil mencetak <b>rekor komputasi tercepat</b> secara keseluruhan! ⚡</span>);
+                                    } else {
+                                        summaryElements.push(<span key="time" className="text-slate-400 ml-1">Untuk kecepatan komputasi murni, {algorithmDetails[fastestAlgo.algo]?.title} masih memegang rekor tercepat ({fastestAlgo.time.toFixed(2)}ms).</span>);
+                                    }
+
+                                    // 4. Analisis Optimasi Rute (Mendeteksi kelemahan)
+                                    const validPast = pastHistory.filter(h => h.path > 0);
+                                    if (current.path > 0 && validPast.length > 0) {
+                                        const shortestPath = validPast.reduce((prev, curr) => curr.path < prev.path ? curr : prev);
+                                        if (current.path > shortestPath.path) {
+                                            summaryElements.push(<span key="path" className="text-rose-400 ml-1 block mt-2 pt-2 border-t border-slate-700/50">⚠️ <b>Kelemahan Terdeteksi:</b> Rute yang ditemukan <b>{current.path - shortestPath.path} langkah lebih panjang</b> (tidak optimal) dibandingkan rute milik {algorithmDetails[shortestPath.algo]?.title}!</span>);
+                                        }
+                                    }
+
+                                    return summaryElements;
+                                })()
+                            )}
+                        </p>
+                    </div>
+
+                    {/* --- TABEL PERBANDINGAN / LEADERBOARD --- */}
+                    {history.length > 1 && (
+                        <div className="mb-8 border border-slate-700 rounded-2xl overflow-hidden bg-slate-800/30 shadow-inner">
+                            
+                            {/* Header Tabel */}
+                            <div className="bg-slate-800 py-2.5 px-4 border-b border-slate-700 grid grid-cols-12 gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider items-center text-center">
+                                <div className="col-span-5 text-left">Algoritma</div>
+                                <div className="col-span-2" title="Blok yang dievaluasi">Blok</div>
+                                <div className="col-span-2" title="Langkah rute">Rute</div>
+                                <div className="col-span-3 text-right" title="Waktu Eksekusi">Waktu (ms)</div>
+                            </div>
+                            
+                            {/* Isi Tabel */}
+                            <div className="p-2 space-y-1 text-xs">
+                                {history.map((item, idx) => (
+                                    <div key={idx} className={`grid grid-cols-12 gap-2 items-center p-2.5 rounded-xl font-medium transition-colors ${idx === history.length - 1 ? 'bg-slate-700/80 border border-slate-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50'}`}>
+                                        
+                                        <div className="col-span-5 flex items-center gap-2 text-left overflow-hidden">
+                                            <span className="w-3 text-center opacity-50 text-[10px]">{idx + 1}.</span>
+                                            <span className={`${idx === history.length - 1 ? algorithmDetails[item.algo]?.color : 'text-slate-300'} font-bold truncate`}>
+                                                {algorithmDetails[item.algo]?.title}
+                                            </span>
+                                        </div>
+                                        
+                                        <div className={`col-span-2 text-center ${idx === history.length - 1 ? 'text-cyan-400' : ''}`}>
+                                            {item.visited}
+                                        </div>
+                                        
+                                        <div className={`col-span-2 text-center ${idx === history.length - 1 ? 'text-emerald-400' : ''}`}>
+                                            {item.path}
+                                        </div>
+                                        
+                                        <div className={`col-span-3 text-right font-mono text-[11px] ${idx === history.length - 1 ? 'text-amber-400' : 'text-slate-500'}`}>
+                                            {item.time.toFixed(2)}
+                                        </div>
+                                        
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <button 
-                        onClick={() => setStats(null)}
+                        onClick={() => {
+                            setStats(null);
+                            handleClearPath(); 
+                        }}
                         className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl transition-all shadow-md active:scale-95 border border-slate-600"
                     >
-                        Tutup & Evaluasi Ulang
+                        Tutup & Uji Algoritma Lain
                     </button>
                 </div>
             </div>
@@ -334,7 +440,23 @@ export default function Scene() {
                 <DreiGrid position={[0, -0.11, 0]} infiniteGrid sectionSize={1} sectionColor="#334155" cellColor="#475569" />
                 <Sky sunPosition={[100, 20, 100]} />
                 <Suspense fallback={null}>
-                    <PathfindingGrid triggerRun={triggerRun} algorithm={algorithm} clearPathTrigger={clearPathTrigger} clearBoardTrigger={clearBoardTrigger} drawMode={drawMode} rotationStep={rotationStep} isMobile={isMobile} onFinishAnimation={(visited, path) => setStats({ visited, path })} />
+                    <PathfindingGrid 
+                        triggerRun={triggerRun} 
+                        algorithm={algorithm} 
+                        clearPathTrigger={clearPathTrigger} 
+                        clearBoardTrigger={clearBoardTrigger} 
+                        drawMode={drawMode} 
+                        rotationStep={rotationStep} 
+                        isMobile={isMobile} 
+                        onFinishAnimation={(visited, path, time) => {
+                            setStats({ visited, path, time });
+                            setHistory(prev => {
+                                const lastEntry = prev[prev.length - 1];
+                                if (lastEntry && lastEntry.algo === algorithm && lastEntry.visited === visited) return prev;
+                                return [...prev, { algo: algorithm, visited, path, time }];
+                            });
+                        }}
+                    />
                 </Suspense>
             </Canvas>
         </div>
