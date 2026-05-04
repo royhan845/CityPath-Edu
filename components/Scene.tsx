@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react"
 import { Canvas } from "@react-three/fiber"
-import { MapControls, OrbitControls, Grid as DreiGrid, Sky } from "@react-three/drei"
+import { MapControls, OrbitControls, Grid as DreiGrid, Sky, GizmoHelper, GizmoViewport } from "@react-three/drei"
 import PathfindingGrid from "./Grid"
 import { BUILDINGS } from "../config/constants"
 
@@ -22,6 +22,7 @@ export default function Scene() {
 
     const [stats, setStats] = useState<{visited: number, path: number, time: number} | null>(null);
     const [history, setHistory] = useState<{algo: string, visited: number, path: number, time: number}[]>([]);
+    const [liveText, setLiveText] = useState<string>("");
 
     const [showTutorial, setShowTutorial] = useState(false);
     const [tutorialStep, setTutorialStep] = useState(0);
@@ -292,6 +293,64 @@ export default function Scene() {
                 </div>
             </div>
 
+            {/* --- LIVE ACTION LOG (SUBTITLES) DENGAN PROGRESS BAR --- */}
+            <div className={`absolute bottom-12 left-1/2 transform -translate-x-1/2 transition-all duration-500 z-[100] pointer-events-none ${liveText && !stats ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                <div className="bg-slate-900/90 border border-emerald-500/50 px-6 py-4 rounded-3xl shadow-[0_0_30px_rgba(16,185,129,0.2)] backdrop-blur-md min-w-[320px]">
+                    <div className="flex items-center gap-4 mb-3">
+                        <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        </span>
+                        <p className="text-sm font-bold text-emerald-400 tracking-wide">
+                            {liveText}
+                        </p>
+                    </div>
+                    
+                    {/* Progress Bar Dinamis */}
+                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                        <div 
+                            className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-300 ease-out"
+                            style={{ 
+                                width: liveText.includes("Memulai") ? "10%" : 
+                                    liveText.includes("Scanning") ? "40%" : 
+                                    liveText.includes("Target") ? "75%" : 
+                                    liveText.includes("Rute") ? "95%" : "0%" 
+                            }}
+                        ></div>
+                    </div>
+                </div>
+            </div>
+
+            {/* --- PANEL LEGENDA EDUKATIF --- */}
+            <div className="absolute top-20 right-4 z-40 hidden md:flex flex-col gap-2 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-slate-700 shadow-xl">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Informasi Visual</h3>
+                
+                <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-xs text-slate-300 font-medium">Titik Awal (Source)</span>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-rose-500 animate-pulse"></div>
+                    <span className="text-xs text-slate-300 font-medium">Target (Destination)</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-sm bg-sky-400 opacity-60"></div>
+                    <span className="text-xs text-slate-300 font-medium">Visited (Closed Set)</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-sm bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.5)]"></div>
+                    <span className="text-xs text-slate-300 font-medium">Shortest Path (Optimal)</span>
+                </div>
+
+                <div className="mt-2 pt-2 border-t border-slate-800 flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-sm bg-white shadow-[0_0_10px_#fff]"></div>
+                    <span className="text-xs text-white font-bold italic">Active Scanner</span>
+                </div>
+            </div>
+
             {/* --- MODAL LAPORAN EDUKASI & PERBANDINGAN --- */}
             <div className={`absolute inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-sm transition-all duration-500 ${stats ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <div className={`bg-slate-900 border border-slate-700 p-8 rounded-3xl shadow-2xl max-w-md w-full transform transition-all duration-500 delay-100 ${stats ? 'translate-y-0 scale-100' : 'translate-y-10 scale-95'} max-h-[90vh] overflow-y-auto hide-scrollbar`}>
@@ -321,7 +380,9 @@ export default function Scene() {
                         </div>
                         <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-2xl text-center flex flex-col justify-center">
                             <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Waktu</p>
-                            <p className="text-xl font-black text-amber-400">{stats?.time.toFixed(2)}</p>
+                            <p className="text-xl font-black text-amber-400">
+                                {stats?.time && stats.time < 0.01 ? "< 0.01" : stats?.time.toFixed(2)}
+                            </p>
                             <p className="text-[9px] text-slate-500 mt-0.5">Milidetik</p>
                         </div>
                     </div>
@@ -330,49 +391,50 @@ export default function Scene() {
                     <div className="mb-6 bg-slate-800/80 border border-slate-600 p-4 rounded-2xl relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
                         <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-2">💡 Ringkasan Analisis</h4>
-                        <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                        <div className="text-sm text-slate-400 leading-relaxed font-medium">
                             {history.length <= 1 ? (
                                 "Ini adalah eksekusi pertamamu pada labirin ini. Coba tutup jendela ini, pilih algoritma lain, dan sistem akan membandingkan performanya secara otomatis!"
                             ) : (
                                 (() => {
+                                    if (history.length === 0) return null;
+
+                                    // 1. Cari Pemegang Rekor dari SELURUH Riwayat
+                                    const bestVisitedAlgo = [...history].sort((a, b) => a.visited - b.visited)[0];
+                                    const fastestAlgo = [...history].sort((a, b) => a.time - b.time)[0];
                                     const current = history[history.length - 1];
-                                    const pastHistory = history.slice(0, -1);
-                                    
-                                    // 1. Cari pemegang rekor dari riwayat sebelumnya
-                                    const bestVisited = pastHistory.reduce((prev, curr) => prev.visited < curr.visited ? prev : curr);
-                                    const fastestAlgo = pastHistory.reduce((prev, curr) => prev.time < curr.time ? prev : curr);
-                                    
-                                    let summaryElements = [];
 
-                                    // 2. Analisis Efisiensi (Blok)
-                                    if (current.visited < bestVisited.visited) {
-                                        summaryElements.push(<span key="eff" className="text-emerald-300"><b>Terbaik Sejauh Ini! 👑</b> Algoritma ini memecahkan rekor efisiensi, mengevaluasi <b>{bestVisited.visited - current.visited} blok lebih sedikit</b> dibandingkan rekor sebelumnya ({algorithmDetails[bestVisited.algo]?.title}).</span>);
-                                    } else if (current.visited === bestVisited.visited) {
-                                        summaryElements.push(<span key="eff" className="text-blue-300"><b>Setara Rekor Terbaik.</b> Tingkat efisiensi pemeriksaannya sangat optimal, sama-sama hanya mengecek <b>{current.visited} blok</b> layaknya {algorithmDetails[bestVisited.algo]?.title}.</span>);
-                                    } else {
-                                        summaryElements.push(<span key="eff" className="text-rose-300"><b>Lebih Boros Komputasi.</b> Algoritma ini memeriksa <b>{current.visited - bestVisited.visited} blok lebih banyak</b> dibandingkan algoritma paling efisien sejauh ini ({algorithmDetails[bestVisited.algo]?.title}).</span>);
+                                    let summary = [];
+
+                                    // 2. Logic Kesimpulan Global (Efisiensi)
+                                    summary.push(
+                                        <span key="global-eff" className="block mb-2">
+                                            🏆 <b>Efisiensi Tertinggi:</b> Secara matematis, <b>{algorithmDetails[bestVisitedAlgo.algo]?.title}</b> adalah yang paling hemat memori dengan hanya memeriksa <b>{bestVisitedAlgo.visited} blok</b>.
+                                        </span>
+                                    );
+
+                                    // 3. Logic Kesimpulan Global (Kecepatan)
+                                    summary.push(
+                                        <span key="global-speed" className="block mb-2">
+                                            ⚡ <b>Kecepatan Tertinggi:</b> Dalam hal komputasi murni, <b>{algorithmDetails[fastestAlgo.algo]?.title}</b> memegang rekor tercepat dengan waktu <b>{fastestAlgo.time < 0.01 ? "< 0.01" : fastestAlgo.time.toFixed(2)} ms</b>.
+                                        </span>
+                                    );
+
+                                    // 4. Logic Perbandingan Spesifik untuk yang Baru Saja Dijalankan
+                                    if (history.length > 1) {
+                                        summary.push(
+                                            <div key="current-analysis" className="mt-3 pt-3 border-t border-slate-700/50 italic text-[13px]">
+                                                {current.algo === bestVisitedAlgo.algo 
+                                                    ? `✅ Percobaan terakhir (${algorithmDetails[current.algo]?.title}) berhasil mempertahankan posisi sebagai yang paling efisien.`
+                                                    : `ℹ️ Percobaan terakhir (${algorithmDetails[current.algo]?.title}) membutuhkan ${current.visited - bestVisitedAlgo.visited} blok lebih banyak dibandingkan rekor terbaik.`
+                                                }
+                                            </div>
+                                        );
                                     }
 
-                                    // 3. Analisis Kecepatan (Waktu)
-                                    if (current.time < fastestAlgo.time) {
-                                        summaryElements.push(<span key="time" className="text-amber-300 ml-1">Menariknya, ia berhasil mencetak <b>rekor komputasi tercepat</b> secara keseluruhan! ⚡</span>);
-                                    } else {
-                                        summaryElements.push(<span key="time" className="text-slate-400 ml-1">Untuk kecepatan komputasi murni, {algorithmDetails[fastestAlgo.algo]?.title} masih memegang rekor tercepat ({fastestAlgo.time.toFixed(2)}ms).</span>);
-                                    }
-
-                                    // 4. Analisis Optimasi Rute (Mendeteksi kelemahan)
-                                    const validPast = pastHistory.filter(h => h.path > 0);
-                                    if (current.path > 0 && validPast.length > 0) {
-                                        const shortestPath = validPast.reduce((prev, curr) => curr.path < prev.path ? curr : prev);
-                                        if (current.path > shortestPath.path) {
-                                            summaryElements.push(<span key="path" className="text-rose-400 ml-1 block mt-2 pt-2 border-t border-slate-700/50">⚠️ <b>Kelemahan Terdeteksi:</b> Rute yang ditemukan <b>{current.path - shortestPath.path} langkah lebih panjang</b> (tidak optimal) dibandingkan rute milik {algorithmDetails[shortestPath.algo]?.title}!</span>);
-                                        }
-                                    }
-
-                                    return summaryElements;
+                                    return summary;
                                 })()
                             )}
-                        </p>
+                        </div>
                     </div>
 
                     {/* --- TABEL PERBANDINGAN / LEADERBOARD --- */}
@@ -408,7 +470,7 @@ export default function Scene() {
                                         </div>
                                         
                                         <div className={`col-span-3 text-right font-mono text-[11px] ${idx === history.length - 1 ? 'text-amber-400' : 'text-slate-500'}`}>
-                                            {item.time.toFixed(2)}
+                                            {item.time < 0.01 ? "< 0.01" : item.time.toFixed(2)}
                                         </div>
                                         
                                     </div>
@@ -432,13 +494,20 @@ export default function Scene() {
             <Canvas dpr={[1, 1.5]}  camera={{ position: isMobile ? [0, 15, 30] : [0, 15, 30], fov: isMobile ? 55 : 25 }}>
                 <ambientLight intensity={1.5} />
                 <directionalLight position={[10, 20, 10]} intensity={2} />
+                
                 {isMobile ? (
                     <OrbitControls makeDefault minDistance={10} maxDistance={70} maxPolarAngle={Math.PI / 2.1} />
                 ) : (
                     <MapControls makeDefault minDistance={10} maxDistance={70} panSpeed={1.5} />
                 )}
+
                 <DreiGrid position={[0, -0.11, 0]} infiniteGrid sectionSize={1} sectionColor="#334155" cellColor="#475569" />
                 <Sky sunPosition={[100, 20, 100]} />
+
+                <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+                    <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="white" />
+                </GizmoHelper>
+
                 <Suspense fallback={null}>
                     <PathfindingGrid 
                         triggerRun={triggerRun} 
@@ -448,8 +517,10 @@ export default function Scene() {
                         drawMode={drawMode} 
                         rotationStep={rotationStep} 
                         isMobile={isMobile} 
+                        onStepUpdate={(text) => setLiveText(text)}
                         onFinishAnimation={(visited, path, time) => {
                             setStats({ visited, path, time });
+                            setLiveText("");
                             setHistory(prev => {
                                 const lastEntry = prev[prev.length - 1];
                                 if (lastEntry && lastEntry.algo === algorithm && lastEntry.visited === visited) return prev;

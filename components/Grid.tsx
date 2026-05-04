@@ -45,11 +45,16 @@ interface PathfindingGridProps {
     drawMode?: string; 
     rotationStep: number;
     isMobile: boolean;
-    onFinishAnimation?: (visitedCount: number, pathLength: number, timeMs: number) => void;
+    onFinishAnimation?: (
+        visitedCount: number, 
+        pathLength: number, 
+        timeMs: number
+    ) => void;
+    onStepUpdate?: (text: string) => void;
 }
 
 export default function PathfindingGrid({ 
-    triggerRun, algorithm, clearPathTrigger, clearBoardTrigger, drawMode, rotationStep, isMobile, onFinishAnimation
+    triggerRun, algorithm, clearPathTrigger, clearBoardTrigger, drawMode, rotationStep, isMobile, onFinishAnimation, onStepUpdate
 }: PathfindingGridProps) {
 
     const gridOffsetZ = isMobile ? -4 : 0;
@@ -150,6 +155,7 @@ export default function PathfindingGrid({
     const hasShownPopup = useRef(false);
 
     const [isAnimating, setIsAnimating] = useState(false);
+    const [activeNode, setActiveNode] = useState<number | null>(null);
     
     useEffect(() => {
         if (isCharNear && walkPath.length > 0 && !hasShownPopup.current) {
@@ -255,35 +261,60 @@ export default function PathfindingGrid({
     const animateAlgorithm = (visitedNodes: number[], pathNodes: number[], execTime: number) => {
         setWalkPath([]);
         setIsCharNear(false);
-        
         setLastStats({ visited: visitedNodes.length, path: pathNodes.length, time: execTime });
+        
+        const PHASE_GAP = 800; 
+        const SCAN_SPEED = 40; 
+
+        // --- FASE 1: SCANNING ---
+        if (onStepUpdate) onStepUpdate("Sistem Aktif: Memulai kalkulasi spasial...");
 
         for (let i = 0; i < visitedNodes.length; i++) {
-            setTimeout(() => setNodes((prev) => { 
-                const n = [...prev]; 
-                if (n[visitedNodes[i]] !== 1 && n[visitedNodes[i]] !== 2) n[visitedNodes[i]] = 4;
-                return n;
-            }), 15 * i);
+            setTimeout(() => {
+                const currentNode = visitedNodes[i];
+                const x = Math.floor(currentNode / GRID_SIZE);
+                const z = currentNode % GRID_SIZE;
+
+                setNodes((prev) => { 
+                    const n = [...prev]; 
+                    if (n[currentNode] !== 1 && n[currentNode] !== 2) n[currentNode] = 4;
+                    return n;
+                });
+                
+                if (onStepUpdate && i % 15 === 0) {
+                    onStepUpdate(`Proses: Evaluasi Node X:${x} Z:${z} (Blok ke-${i})`);
+                }
+            }, SCAN_SPEED * i);
         }
 
-        const timeToFinishScan = visitedNodes.length * 15;
+        const timeToFinishScan = visitedNodes.length * SCAN_SPEED;
+        const startTimePath = timeToFinishScan + PHASE_GAP;
 
+        // --- FASE 2: PATHFINDING ---
         for (let i = 0; i < pathNodes.length; i++) {
-            setTimeout(() => setNodes((prev) => { 
-                const n = [...prev]; 
-                if (n[pathNodes[i]] !== 1 && n[pathNodes[i]] !== 2) n[pathNodes[i]] = 5; 
-                return n; 
-            }), timeToFinishScan + (50 * i));
+            setTimeout(() => {
+                const currentNode = pathNodes[i];
+                setNodes((prev) => { 
+                    const n = [...prev]; 
+                    if (n[currentNode] !== 1 && n[currentNode] !== 2) n[currentNode] = 5; 
+                    return n; 
+                });
+            }, startTimePath + (50 * i));
         }
+
+        // --- FASE 3: ANIMASI ---
+        const timeToFinishPath = startTimePath + (pathNodes.length * 50);
+        const startTimeCharacter = timeToFinishPath + PHASE_GAP;
 
         setTimeout(() => {
-            if (pathNodes.length === 0) {
-                setIsAnimating(false);
-                if (onFinishAnimation) onFinishAnimation(visitedNodes.length, 0, execTime);
-            } else {
+            if (pathNodes.length > 0) {
+                if (onStepUpdate) onStepUpdate("Jalur Terkunci: Memulai navigasi entitas...");
                 setWalkPath(pathNodes);
+            } else {
+                if (onStepUpdate) onStepUpdate("Error: Jalur tidak ditemukan (Unreachable).");
+                if (onFinishAnimation) onFinishAnimation(visitedNodes.length, 0, execTime);
             }
-        }, timeToFinishScan + (50 * pathNodes.length));
+        }, startTimeCharacter);
     };
 
     const getAnchorFromId = (id: number, nodesArr: number[], rots: Record<number, number>) => {
@@ -351,6 +382,11 @@ export default function PathfindingGrid({
                 meshRef.current.setMatrixAt(id, tempObject.matrix)
 
                 let hexColor = getColor(nodes[id], id);
+
+                if (id === activeNode) {
+                    hexColor = "#ffffff";
+                }
+
                 if (hoverFootprint.includes(id)) {
                     hexColor = isHoverValid ? "#86efac" : "#fca5a5";
                 }
