@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Scene from "@/components/Scene";
+import TemplateSelector from "@/components/TemplateSelector";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Float } from "@react-three/drei";
 
@@ -37,6 +38,9 @@ const HologramShowcase = () => {
 
 export default function Home() {
     const [isSimulating, setIsSimulating] = useState(false);
+    
+    // State untuk menyimpan template yang dipilih
+    const [currentTemplate, setCurrentTemplate] = useState<string>('empty'); 
 
     useEffect(() => {
         if (isSimulating) {
@@ -50,15 +54,22 @@ export default function Home() {
     if (isSimulating) {
         return (
             <div className="fixed inset-0 w-full h-[100dvh] animate-in fade-in duration-700 bg-slate-900 z-50">
+                
+                {/* Tombol Keluar (Kanan Atas) */}
                 <button 
                     onClick={() => setIsSimulating(false)}
-                    className="group absolute top-6 right-6 z-50 bg-slate-900/60 hover:bg-rose-500/90 text-slate-200 hover:text-white px-6 py-3 rounded-full font-bold backdrop-blur-xl border border-slate-700/50 hover:border-rose-400/50 transition-all duration-300 shadow-2xl flex items-center gap-3"
+                    className="group absolute top-6 right-6 z-50 bg-slate-900/80 hover:bg-rose-500/90 text-slate-200 hover:text-white px-6 py-3 rounded-full font-bold backdrop-blur-xl border border-slate-700/50 hover:border-rose-400/50 transition-all duration-300 shadow-2xl flex items-center gap-3"
                 >
                     <span className="bg-slate-700 group-hover:bg-rose-600 text-[10px] w-6 h-6 flex items-center justify-center rounded-full transition-colors">
                         ✖
                     </span> 
                     Keluar Simulasi
                 </button>
+
+                {/* 3D SCENE 
+                    (Sidebar asli kamu, TemplateSelector, dan logika grid 
+                    semuanya sudah otomatis jalan di dalam komponen ini) 
+                */}
                 <Scene />
             </div>
         )
@@ -95,7 +106,6 @@ export default function Home() {
                             Modul Visualisasi 3D
                         </div>
                         
-                        {/* Judul dikecilkan ke text-5xl/6xl agar tidak menuhi layar */}
                         <h1 className="text-5xl lg:text-6xl font-black leading-[1.1] text-slate-900 tracking-tight">
                             Analisis Algoritma <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 drop-shadow-sm">
@@ -124,7 +134,6 @@ export default function Home() {
 
                     <div className="flex-1 w-full max-w-xl md:max-w-none relative group perspective-1000 mx-auto">
                         <div className="absolute -inset-2 bg-gradient-to-tr from-emerald-400 to-cyan-400 rounded-[3rem] blur-2xl opacity-20 group-hover:opacity-40 transition duration-700"></div>
-                        {/* Gambar menggunakan rasio 4:3 agar tidak terlalu tinggi menekan layar */}
                         <div className="relative aspect-[4/3] lg:aspect-[16/10] bg-white rounded-[3rem] overflow-hidden shadow-2xl border-[10px] border-white flex items-center justify-center transform transition-transform duration-700 group-hover:rotate-1 group-hover:scale-[1.02]">
                             <img src="/images/image.png" alt="Preview City Editor" className="w-full h-full object-cover scale-100 group-hover:scale-105 transition-transform duration-1000 ease-out" />
                         </div>

@@ -5,8 +5,13 @@ import { Canvas } from "@react-three/fiber"
 import { MapControls, OrbitControls, Grid as DreiGrid, Sky, GizmoHelper, GizmoViewport } from "@react-three/drei"
 import PathfindingGrid from "./Grid"
 import { BUILDINGS } from "../config/constants"
+import TemplateSelector from "./TemplateSelector"
 
-export default function Scene() {
+interface SceneProps {
+    templateId?: string;
+}
+
+export default function Scene({ templateId: initialTemplate = 'empty' }: SceneProps) {
     const [algorithm, setAlgorithm] = useState("dijkstra")
     const [triggerRun, setTriggerRun] = useState(false)
 
@@ -15,6 +20,8 @@ export default function Scene() {
 
     const [drawMode, setDrawMode] = useState("start")
     const [rotationStep, setRotationStep] = useState(0)
+
+    const [templateId, setTemplateId] = useState(initialTemplate);
 
     const [isExpanded, setIsExpanded] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
@@ -31,17 +38,17 @@ export default function Scene() {
         {
             title: "Konfigurasi Environment",
             desc: "Gunakan instrumen 'Klik Gedung' dan 'Katalog' di panel kiri untuk mendesain topologi rintangan. Semakin kompleks kotamu, semakin menantang untuk algoritmanya!",
-            image: "/images/tutorial-1.png"
+            video: "./video/Konfigurasi Environment.mp4"
         },
         {
             title: "Penempatan Entitas",
             desc: "Pilih instrumen 'Titik Awal' (Karakter) atau 'Titik Tujuan' (Target), lalu klik di area tanah kosong untuk memindahkan mereka ke posisi yang strategis.",
-            image: "/images/tutorial-2.png"
+            video: "./video/tutorial-2.mp4"
         },
         {
             title: "Analisis Algoritma",
             desc: "Pilih metode algoritma dari menu dropdown, lalu eksekusi. Kamu bisa membandingkan mana algoritma yang paling efisien dalam memecahkan labirin buatanmu.",
-            image: "/images/tutorial-3.png"
+            video: "./video/tutorial-3.mp4"
         }
     ];
 
@@ -53,7 +60,6 @@ export default function Scene() {
         dfs: { title: "Depth-First", icon: "⛏️", color: "text-rose-400", desc: "DFS mengeksplorasi satu percabangan sedalam-dalamnya secara membabi buta sebelum mundur (backtracking). Sangat tidak disarankan untuk pencarian rute terpendek." }
     };
 
-    // --- AUTO SHOW TUTORIAL SAAT PERTAMA MASUK ---
     useEffect(() => {
         const timer = setTimeout(() => {
             setShowTutorial(true);
@@ -89,8 +95,10 @@ export default function Scene() {
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
-    // --- HANDLER FUNGSI ---
     const handleVisualize = () => {
+        if (isMobile) {
+            setIsExpanded(false);
+        }
         setTriggerRun(true); 
         setTimeout(() => setTriggerRun(false), 1000); 
     }
@@ -173,6 +181,10 @@ export default function Scene() {
                         <button onClick={handleVisualize} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg active:scale-95 border border-emerald-400 flex justify-center items-center">
                             Eksekusi Algoritma
                         </button>
+
+                        <TemplateSelector onSelectTemplate={(id) => {
+                            setTemplateId(id);
+                        }} />
                     </div>
 
                     <div className="flex flex-col gap-3 pt-4 border-t border-slate-800">
@@ -229,34 +241,29 @@ export default function Scene() {
             <div className={`absolute inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-md transition-all duration-500 ${showTutorial ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <div className={`bg-slate-900 border border-slate-700 p-6 md:p-8 rounded-3xl shadow-2xl max-w-lg w-full transform transition-all duration-500 delay-100 ${showTutorial ? 'translate-y-0 scale-100' : 'translate-y-10 scale-95'}`}>
                     
-                    {/* Progress Dots */}
                     <div className="flex justify-center gap-2 mb-6">
                         {tutorialSlides.map((_, idx) => (
                             <div key={idx} className={`h-2 rounded-full transition-all duration-300 ${tutorialStep === idx ? 'w-8 bg-emerald-500' : 'w-2 bg-slate-700'}`}></div>
                         ))}
                     </div>
 
-                    {/* Image Placeholder */}
                     <div className="w-full aspect-video bg-slate-800 rounded-2xl mb-6 overflow-hidden border border-slate-700 flex items-center justify-center relative">
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600 font-bold">
-                            <span className="text-3xl mb-2">📸</span>
-                            <span>Ilustrasi {tutorialStep + 1}</span>
-                        </div>
-                        <img 
-                            src={tutorialSlides[tutorialStep].image} 
-                            alt={`Tutorial ${tutorialStep + 1}`} 
+                        <video 
+                            src={tutorialSlides[tutorialStep].video}
+                            autoPlay 
+                            loop 
+                            muted 
+                            playsInline
                             className="w-full h-full object-cover relative z-10"
                             onError={(e) => e.currentTarget.style.display = 'none'} 
                         />
                     </div>
 
-                    {/* Text Content */}
                     <div className="min-h-[100px]">
                         <h2 className="text-2xl font-black text-white mb-2 tracking-tight">{tutorialSlides[tutorialStep].title}</h2>
                         <p className="text-slate-400 text-sm leading-relaxed">{tutorialSlides[tutorialStep].desc}</p>
                     </div>
 
-                    {/* Navigation Buttons */}
                     <div className="flex gap-3 mt-8">
                         <button 
                             onClick={() => setTutorialStep(prev => Math.max(0, prev - 1))}
@@ -282,7 +289,6 @@ export default function Scene() {
                         )}
                     </div>
                     
-                    {/* Skip Button */}
                     <button 
                         onClick={closeTutorial}
                         className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
@@ -306,7 +312,6 @@ export default function Scene() {
                         </p>
                     </div>
                     
-                    {/* Progress Bar Dinamis */}
                     <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
                         <div 
                             className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-300 ease-out"
@@ -387,7 +392,6 @@ export default function Scene() {
                         </div>
                     </div>
 
-                    {/* --- RINGKASAN ANALISIS DINAMIS (GLOBAL) --- */}
                     <div className="mb-6 bg-slate-800/80 border border-slate-600 p-4 rounded-2xl relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
                         <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-2">💡 Ringkasan Analisis</h4>
@@ -398,28 +402,24 @@ export default function Scene() {
                                 (() => {
                                     if (history.length === 0) return null;
 
-                                    // 1. Cari Pemegang Rekor dari SELURUH Riwayat
                                     const bestVisitedAlgo = [...history].sort((a, b) => a.visited - b.visited)[0];
                                     const fastestAlgo = [...history].sort((a, b) => a.time - b.time)[0];
                                     const current = history[history.length - 1];
 
                                     let summary = [];
 
-                                    // 2. Logic Kesimpulan Global (Efisiensi)
                                     summary.push(
                                         <span key="global-eff" className="block mb-2">
                                             🏆 <b>Efisiensi Tertinggi:</b> Secara matematis, <b>{algorithmDetails[bestVisitedAlgo.algo]?.title}</b> adalah yang paling hemat memori dengan hanya memeriksa <b>{bestVisitedAlgo.visited} blok</b>.
                                         </span>
                                     );
 
-                                    // 3. Logic Kesimpulan Global (Kecepatan)
                                     summary.push(
                                         <span key="global-speed" className="block mb-2">
                                             ⚡ <b>Kecepatan Tertinggi:</b> Dalam hal komputasi murni, <b>{algorithmDetails[fastestAlgo.algo]?.title}</b> memegang rekor tercepat dengan waktu <b>{fastestAlgo.time < 0.01 ? "< 0.01" : fastestAlgo.time.toFixed(2)} ms</b>.
                                         </span>
                                     );
 
-                                    // 4. Logic Perbandingan Spesifik untuk yang Baru Saja Dijalankan
                                     if (history.length > 1) {
                                         summary.push(
                                             <div key="current-analysis" className="mt-3 pt-3 border-t border-slate-700/50 italic text-[13px]">
@@ -437,11 +437,8 @@ export default function Scene() {
                         </div>
                     </div>
 
-                    {/* --- TABEL PERBANDINGAN / LEADERBOARD --- */}
                     {history.length > 1 && (
                         <div className="mb-8 border border-slate-700 rounded-2xl overflow-hidden bg-slate-800/30 shadow-inner">
-                            
-                            {/* Header Tabel */}
                             <div className="bg-slate-800 py-2.5 px-4 border-b border-slate-700 grid grid-cols-12 gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider items-center text-center">
                                 <div className="col-span-5 text-left">Algoritma</div>
                                 <div className="col-span-2" title="Blok yang dievaluasi">Blok</div>
@@ -449,7 +446,6 @@ export default function Scene() {
                                 <div className="col-span-3 text-right" title="Waktu Eksekusi">Waktu (ms)</div>
                             </div>
                             
-                            {/* Isi Tabel */}
                             <div className="p-2 space-y-1 text-xs">
                                 {history.map((item, idx) => (
                                     <div key={idx} className={`grid grid-cols-12 gap-2 items-center p-2.5 rounded-xl font-medium transition-colors ${idx === history.length - 1 ? 'bg-slate-700/80 border border-slate-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50'}`}>
@@ -515,8 +511,10 @@ export default function Scene() {
                         clearPathTrigger={clearPathTrigger} 
                         clearBoardTrigger={clearBoardTrigger} 
                         drawMode={drawMode} 
+                        setDrawMode={setDrawMode}
                         rotationStep={rotationStep} 
                         isMobile={isMobile} 
+                        templateId={templateId}
                         onStepUpdate={(text) => setLiveText(text)}
                         onFinishAnimation={(visited, path, time) => {
                             setStats({ visited, path, time });

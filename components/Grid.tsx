@@ -11,7 +11,6 @@ import AnimatedCharEnd from "./AnimatedCharEnd"
 import { runDijkstra, runAStar, runBFS, runDFS, runGreedyBFS } from "../utils/algorithms"
 import { playSound } from "../utils/audio"
 import { BUILDINGS, GRID_SIZE, GRID_HEIGHT, SURFACE_Y } from "../config/constants"
-import { time } from "console"
 
 Object.values(BUILDINGS).forEach((bld) => useGLTF.preload(bld.path));
 useGLTF.preload("/models/character/character-male-d.glb");
@@ -37,42 +36,67 @@ const getDynamicFootprint = (anchorId: number, gridSize: number, sizeX: number, 
 
 const isNodeEmpty = (status: number) => [0, 4, 5].includes(status);
 
+// --- TAMBAHKAN templateId DI SINI ---
 interface PathfindingGridProps {
     triggerRun: boolean; 
     algorithm: string; 
     clearPathTrigger: boolean; 
     clearBoardTrigger: boolean;
     drawMode?: string; 
+    setDrawMode?: (mode: string) => void;
     rotationStep: number;
     isMobile: boolean;
-    onFinishAnimation?: (
-        visitedCount: number, 
-        pathLength: number, 
-        timeMs: number
-    ) => void;
+    templateId?: string; // KOTAK SURAT UNTUK MENERIMA TEMPLATE
+    onFinishAnimation?: (visitedCount: number, pathLength: number, timeMs: number) => void;
     onStepUpdate?: (text: string) => void;
 }
 
 export default function PathfindingGrid({ 
-    triggerRun, algorithm, clearPathTrigger, clearBoardTrigger, drawMode, rotationStep, isMobile, onFinishAnimation, onStepUpdate
+    triggerRun, algorithm, clearPathTrigger, clearBoardTrigger, drawMode, setDrawMode, rotationStep, isMobile, templateId = 'empty', onFinishAnimation, onStepUpdate
 }: PathfindingGridProps) {
 
     const gridOffsetZ = isMobile ? -4 : 0;
     const meshRef = useRef<THREE.InstancedMesh>(null!)
     
-    const generateCityData = () => {
+    // =========================================================================
+    // SIHIR ARSITEK: Fungsi ini akan merakit kota berdasarkan pilihan user!
+    // =========================================================================
+    const generateTemplate = (template: string) => {
         const initial = Array(GRID_SIZE * GRID_SIZE).fill(0);
         const rots: Record<number, number> = {};
 
+        const startIdx = 1 * GRID_SIZE + 1; 
+        const endIdx = (GRID_SIZE - 2) * GRID_SIZE + (GRID_SIZE - 2); 
+
+        // 1. JIKA KOSONGAN
+        if (template === 'empty') {
+            initial[startIdx] = 1;
+            initial[endIdx] = 2;
+            return { initialNodes: initial, initialRots: rots };
+        }
+
+        // 2. BIKIN POLA JALANAN (Nilai -1)
         for (let row = 0; row < GRID_SIZE; row++) {
             for (let col = 0; col < GRID_SIZE; col++) {
-                const isHorizontalRoad = row % 4 === 0;
-                const isVerticalRoad = col % 5 === 0;
-                const isAlley = (row % 3 === 0) && (col % 3 === 0);
-                if (isHorizontalRoad || isVerticalRoad || isAlley) initial[row * GRID_SIZE + col] = -1;
+                if (template === 'small') {
+                    if (row % 5 === 0 || col % 5 === 0) initial[row * GRID_SIZE + col] = -1; // Jalan renggang
+                } else if (template === 'metro') {
+                    if (row % 3 === 0 || col % 4 === 0) initial[row * GRID_SIZE + col] = -1; // Jalan padat
+                }
             }
         }
 
+        // 3. BIKIN POLA LABIRIN ZIG-ZAG (Nilai -2)
+        if (template === 'maze') {
+            for (let r = 2; r < GRID_SIZE - 2; r += 2) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (r % 4 === 2 && c > 1) initial[r * GRID_SIZE + c] = -2; // Dinding arah kanan
+                    if (r % 4 === 0 && c < GRID_SIZE - 2) initial[r * GRID_SIZE + c] = -2; // Dinding arah kiri
+                }
+            }
+        }
+
+        // 4. KOSONGKAN AREA TENGAH (Biar pemandangan gak ketutup gedung)
         const mid = Math.floor(GRID_SIZE / 2);
         for (let r = mid - 2; r <= mid + 2; r++) {
             for (let c = mid - 3; c <= mid + 3; c++) {
@@ -80,26 +104,32 @@ export default function PathfindingGrid({
             }
         }
 
-        const startIdx = 1 * GRID_SIZE + 1; 
-        const endIdx = (GRID_SIZE - 2) * GRID_SIZE + (GRID_SIZE - 2); 
-
+        // Amankan Titik Start & End
         const safeZone = [
             startIdx, startIdx+1, startIdx+GRID_SIZE, startIdx+GRID_SIZE+1,
             endIdx, endIdx-1, endIdx-GRID_SIZE, endIdx-GRID_SIZE-1
         ];
         safeZone.forEach(idx => { if(idx >= 0 && idx < initial.length) initial[idx] = -1; });
 
+        // 5. TANAM BANGUNAN
         const buildingsList = Object.values(BUILDINGS).filter(b => b.id >= 7);
+        if (template === 'metro') buildingsList.reverse(); // Metro pakai gedung-gedung yang lebih besar duluan
 
         if (buildingsList.length > 0) {
             for (let row = 0; row < GRID_SIZE; row++) {
                 for (let col = 0; col < GRID_SIZE; col++) {
                     const idx = row * GRID_SIZE + col;
                     
-                    if (initial[idx] === 0) { 
-                        const bld = buildingsList[(row * 7 + col) % buildingsList.length];
-                        const rStep = (row + col) % 4; 
+                    // Bangun hanya di tanah kosong (0) ATAU di titik dinding labirin (-2)
+                    if (initial[idx] === 0 || initial[idx] === -2) { 
+                        let bld = buildingsList[(row * 7 + col) % buildingsList.length];
+                        
+                        // Kalau Labirin, paksa pakai bangunan berukuran 1x1 biar rapi
+                        if (template === 'maze') {
+                            bld = buildingsList.find(b => b.sizeX === 1 && b.sizeZ === 1) || buildingsList[0];
+                        }
 
+                        const rStep = (row + col) % 4; 
                         const actualSizeX = (rStep % 2 !== 0) ? bld.sizeZ : bld.sizeX;
                         const actualSizeZ = (rStep % 2 !== 0) ? bld.sizeX : bld.sizeZ;
 
@@ -110,17 +140,19 @@ export default function PathfindingGrid({
                         for (let r = 0; r < actualSizeX; r++) {
                             for (let c = 0; c < actualSizeZ; c++) {
                                 const checkIdx = (row + r) * GRID_SIZE + (col + c);
-                                if (initial[checkIdx] !== 0) {
-                                    canPlace = false;
-                                    break;
-                                }
+                                if (template === 'maze' && initial[checkIdx] !== -2 && initial[checkIdx] !== 0) canPlace = false;
+                                else if (template !== 'maze' && initial[checkIdx] !== 0) canPlace = false;
+                                
+                                if (!canPlace) break;
                                 fp.push(checkIdx);
                             }
                             if (!canPlace) break;
                         }
 
+                        if (template === 'maze' && initial[idx] !== -2) canPlace = false;
+
                         if (canPlace) {
-                            fp.forEach(i => initial[i] = 3); 
+                            fp.forEach(i => initial[i] = 3); // Tandai footprint
                             initial[idx] = bld.id; 
                             rots[idx] = rStep; 
                         }
@@ -129,8 +161,9 @@ export default function PathfindingGrid({
             }
         }
 
+        // 6. BERSIHKAN BEKAS MARKA
         for (let i = 0; i < initial.length; i++) {
-            if (initial[i] === -1) initial[i] = 0;
+            if (initial[i] === -1 || initial[i] === -2) initial[i] = 0;
         }
 
         initial[startIdx] = 1; 
@@ -139,10 +172,28 @@ export default function PathfindingGrid({
         return { initialNodes: initial, initialRots: rots };
     };
 
-    const initialCityData = useMemo(() => generateCityData(), []);
-    
-    const [nodes, setNodes] = useState(initialCityData.initialNodes);
-    const [nodeRotations, setNodeRotations] = useState<Record<number, number>>(initialCityData.initialRots);
+    // Load template awal saat web pertama kali dibuka
+    const [nodes, setNodes] = useState<number[]>(() => generateTemplate(templateId).initialNodes);
+    const [nodeRotations, setNodeRotations] = useState<Record<number, number>>(() => generateTemplate(templateId).initialRots);
+
+    // =========================================================================
+    // LISTENER TEMPLATE: Akan berjalan otomatis setiap user klik card template
+    // =========================================================================
+    useEffect(() => {
+        setIsAnimating(false);
+        hasShownPopup.current = false;
+        setWalkPath([]);
+        setIsCharNear(false);
+        if (onStepUpdate) onStepUpdate(`Membangun: ${templateId}...`);
+        
+        // Render kota baru berdasarkan pilihan!
+        const newCity = generateTemplate(templateId);
+        setNodes(newCity.initialNodes);
+        setNodeRotations(newCity.initialRots);
+        setSelectedNodeId(null);
+        
+        if (onStepUpdate) setTimeout(() => onStepUpdate(""), 1000);
+    }, [templateId]); // <- Kunci utamanya di sini, dia mantau perubahan templateId
 
     const [hoveredNode, setHoveredNode] = useState<number | null>(null)
     const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
@@ -219,6 +270,7 @@ export default function PathfindingGrid({
             hasShownPopup.current = false;
             setIsAnimating(false);
             
+            // "Bersihkan Environment" otomatis kembali ke Kosongan
             setNodes(() => {
                 const emptyCity = Array(GRID_SIZE * GRID_SIZE).fill(0);
                 const defaultStart = 1 * GRID_SIZE + 1;
@@ -266,7 +318,6 @@ export default function PathfindingGrid({
         const PHASE_GAP = 800; 
         const SCAN_SPEED = 40; 
 
-        // --- FASE 1: SCANNING ---
         if (onStepUpdate) onStepUpdate("Sistem Aktif: Memulai kalkulasi spasial...");
 
         for (let i = 0; i < visitedNodes.length; i++) {
@@ -290,7 +341,6 @@ export default function PathfindingGrid({
         const timeToFinishScan = visitedNodes.length * SCAN_SPEED;
         const startTimePath = timeToFinishScan + PHASE_GAP;
 
-        // --- FASE 2: PATHFINDING ---
         for (let i = 0; i < pathNodes.length; i++) {
             setTimeout(() => {
                 const currentNode = pathNodes[i];
@@ -302,7 +352,6 @@ export default function PathfindingGrid({
             }, startTimePath + (50 * i));
         }
 
-        // --- FASE 3: ANIMASI ---
         const timeToFinishPath = startTimePath + (pathNodes.length * 50);
         const startTimeCharacter = timeToFinishPath + PHASE_GAP;
 
@@ -497,6 +546,7 @@ export default function PathfindingGrid({
 
                 newNodes.forEach((n, i) => { if (n === 4 || n === 5) newNodes[i] = 0; });
                 setWalkPath([]); setIsCharNear(false);
+                if (setDrawMode) setDrawMode("select");
             }
         }
         else if (drawMode === "end") {
@@ -508,6 +558,7 @@ export default function PathfindingGrid({
 
                 newNodes.forEach((n, i) => { if (n === 4 || n === 5) newNodes[i] = 0; });
                 setWalkPath([]); setIsCharNear(false);
+                if (setDrawMode) setDrawMode("select");
             }
         }
 
@@ -524,10 +575,41 @@ export default function PathfindingGrid({
     const renderGhost = () => {
         if (isAnimating || hoveredNode === null) return null; 
 
-        let bldEntry = null;
+        const row = Math.floor(hoveredNode / GRID_SIZE);
+        const col = hoveredNode % GRID_SIZE;
+        const posX = row - GRID_SIZE / 2;
+        const posZ = col - GRID_SIZE / 2;
 
-        if (drawMode?.startsWith("bld-")) bldEntry = BUILDINGS[drawMode];
-        else if (drawMode === "select" && selectedNodeId !== null) {
+        if (drawMode === "start") {
+            return (
+                <group position={[posX, SURFACE_Y, posZ]} rotation={[0, rotationStep * (Math.PI / 2), 0]}>
+                    <ModelLoader 
+                        modelPath="/models/character/character-male-d.glb"
+                        position={[0, 0.15, 0]} 
+                        scale={[0.5, 0.5, 0.5]} 
+                        opacity={0.4} 
+                    />
+                </group>
+            );
+        }
+
+        if (drawMode === "end") {
+            return (
+                <group position={[posX, SURFACE_Y, posZ]} rotation={[0, rotationStep * (Math.PI / 2), 0]}>
+                    <ModelLoader 
+                        modelPath="/models/character/character-female-d.glb"
+                        position={[0, 0.15, 0]} 
+                        scale={[0.5, 0.5, 0.5]} 
+                        opacity={0.4} 
+                    />
+                </group>
+            );
+        }
+
+        let bldEntry = null;
+        if (drawMode?.startsWith("bld-")) {
+            bldEntry = BUILDINGS[drawMode];
+        } else if (drawMode === "select" && selectedNodeId !== null) {
             const bldId = nodes[selectedNodeId];
             bldEntry = Object.values(BUILDINGS).find(b => b.id === bldId);
             if (hoveredNode === selectedNodeId) return null; 
@@ -539,35 +621,22 @@ export default function PathfindingGrid({
         const actualSizeX = (rStep % 2 !== 0) ? bldEntry.sizeZ : bldEntry.sizeX;
         const actualSizeZ = (rStep % 2 !== 0) ? bldEntry.sizeX : bldEntry.sizeZ;
 
-        const row = Math.floor(hoveredNode / GRID_SIZE);
-        const col = hoveredNode % GRID_SIZE;
-
         if (row + actualSizeX > GRID_SIZE || col + actualSizeZ > GRID_SIZE) return null;
 
-        const posX = row - GRID_SIZE / 2;
-        const posZ = col - GRID_SIZE / 2;
-
-        const ox = bldEntry.offset[0];
-        const oz = bldEntry.offset[1];
-        const theta = rStep * (Math.PI / 2);
-        const cosT = Math.round(Math.cos(theta));
-        const sinT = Math.round(Math.sin(theta));
-        
-        const rotatedOffsetX = (ox * cosT) + (oz * sinT);
-        const rotatedOffsetZ = (-ox * sinT) + (oz * cosT);
-
-        const centerX = posX + ((actualSizeX - 1) * 0.5) + rotatedOffsetX;
-        const centerZ = posZ + ((actualSizeZ - 1) * 0.5) + rotatedOffsetZ;
-        const rotationValue = rStep * (Math.PI / 2);
+        const centerX = posX + ((actualSizeX - 1) * 0.5);
+        const centerZ = posZ + ((actualSizeZ - 1) * 0.5);
 
         return (
-            <ModelLoader 
-                modelPath={bldEntry.path}
-                position={[centerX, SURFACE_Y + 0.1, centerZ]} 
-                scale={bldEntry.scale}
-                rotation={[0, rotationValue + (bldEntry.rotation?.[1] || 0), 0]}
-                opacity={0.4}
-            />
+            <group position={[centerX, SURFACE_Y + 0.1, centerZ]} rotation={[0, rStep * (Math.PI / 2), 0]}>
+                <group rotation={[0, bldEntry.rotation?.[1] || 0, 0]}>
+                    <ModelLoader 
+                        modelPath={bldEntry.path}
+                        position={[bldEntry.offset[0], 0, bldEntry.offset[1]]} 
+                        scale={bldEntry.scale}
+                        opacity={0.4}
+                    />
+                </group>
+            </group>
         );
     };
 
@@ -611,29 +680,20 @@ export default function PathfindingGrid({
                         const actualSizeX = (rStep % 2 !== 0) ? bldEntry.sizeZ : bldEntry.sizeX;
                         const actualSizeZ = (rStep % 2 !== 0) ? bldEntry.sizeX : bldEntry.sizeZ;
 
-                        const ox = bldEntry.offset[0];
-                        const oz = bldEntry.offset[1];
-
-                        const theta = rStep * (Math.PI / 2);
-                        const cosT = Math.round(Math.cos(theta));
-                        const sinT = Math.round(Math.sin(theta));
-
-                        const rotatedOffsetX = (ox * cosT) + (oz * sinT);
-                        const rotatedOffsetZ = (-ox * sinT) + (oz * cosT);
-
-                        const centerX = posX + ((actualSizeX - 1) * 0.5) + rotatedOffsetX;
-                        const centerZ = posZ + ((actualSizeZ - 1) * 0.5) + rotatedOffsetZ;
-                        const rotationValue = rStep * (Math.PI / 2);
+                        const centerX = posX + ((actualSizeX - 1) * 0.5);
+                        const centerZ = posZ + ((actualSizeZ - 1) * 0.5);
 
                         modelsToRender.push(
-                            <ModelLoader 
-                                key={`bld-${id}`} 
-                                modelPath={bldEntry.path}
-                                position={[centerX, yPos, centerZ]} 
-                                scale={bldEntry.scale} 
-                                rotation={[0, rotationValue + (bldEntry.rotation?.[1] || 0), 0]} 
-                                isSelected={id === selectedNodeId}
-                            />
+                            <group key={`bld-${id}`} position={[centerX, yPos, centerZ]} rotation={[0, rStep * (Math.PI / 2), 0]}>
+                                <group rotation={[0, bldEntry.rotation?.[1] || 0, 0]}>
+                                    <ModelLoader 
+                                        modelPath={bldEntry.path}
+                                        position={[bldEntry.offset[0], 0, bldEntry.offset[1]]} 
+                                        scale={bldEntry.scale} 
+                                        isSelected={id === selectedNodeId}
+                                    />
+                                </group>
+                            </group>
                         )
                     }
                 }

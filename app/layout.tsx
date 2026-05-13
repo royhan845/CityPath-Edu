@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+// --- IMPORT DISINI ---
+import StatusJaringan from "@/components/StatusJaringan"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,10 +20,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://city-path-edu.vercel.app/"),
-
   title: "CityPath Edu | Visualisasi Algoritma 3D",
   description: "Belajar algoritma pathfinding seperti Dijkstra, A*, dan BFS secara interaktif dengan membangun kota 3D. Simulator edukasi yang menyenangkan!",
-
   openGraph: {
     title: "CityPath Edu - Simulator Algoritma 3D",
     description: "Visualisasi interaktif algoritma pencarian jalan di dalam kota 3D.",
@@ -47,6 +47,8 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* --- PASANG DISINI --- */}
+        <StatusJaringan /> 
         {children}
       </body>
     </html>
