@@ -36,7 +36,6 @@ const getDynamicFootprint = (anchorId: number, gridSize: number, sizeX: number, 
 
 const isNodeEmpty = (status: number) => [0, 4, 5].includes(status);
 
-// --- TAMBAHKAN templateId DI SINI ---
 interface PathfindingGridProps {
     triggerRun: boolean; 
     algorithm: string; 
@@ -46,21 +45,23 @@ interface PathfindingGridProps {
     setDrawMode?: (mode: string) => void;
     rotationStep: number;
     isMobile: boolean;
-    templateId?: string; // KOTAK SURAT UNTUK MENERIMA TEMPLATE
-    onFinishAnimation?: (visitedCount: number, pathLength: number, timeMs: number) => void;
+    templateId?: string; 
+    simSpeed?: number;
+    restoredMapData?: any; // PROP BARU: Untuk menerima map dari Scene
+    onFinishAnimation: (visited: number, path: number, time: number, currentGridData?: any) => void; // UPDATE: Terima param ke-4
     onStepUpdate?: (text: string) => void;
 }
 
 export default function PathfindingGrid({ 
-    triggerRun, algorithm, clearPathTrigger, clearBoardTrigger, drawMode, setDrawMode, rotationStep, isMobile, templateId = 'empty', onFinishAnimation, onStepUpdate
+    triggerRun, algorithm, clearPathTrigger, clearBoardTrigger, drawMode, setDrawMode, rotationStep, isMobile, templateId = 'empty', 
+    simSpeed = 50,
+    restoredMapData,
+    onFinishAnimation, onStepUpdate
 }: PathfindingGridProps) {
 
     const gridOffsetZ = isMobile ? -4 : 0;
     const meshRef = useRef<THREE.InstancedMesh>(null!)
     
-    // =========================================================================
-    // SIHIR ARSITEK: Fungsi ini akan merakit kota berdasarkan pilihan user!
-    // =========================================================================
     const generateTemplate = (template: string) => {
         const initial = Array(GRID_SIZE * GRID_SIZE).fill(0);
         const rots: Record<number, number> = {};
@@ -68,35 +69,31 @@ export default function PathfindingGrid({
         const startIdx = 1 * GRID_SIZE + 1; 
         const endIdx = (GRID_SIZE - 2) * GRID_SIZE + (GRID_SIZE - 2); 
 
-        // 1. JIKA KOSONGAN
         if (template === 'empty') {
             initial[startIdx] = 1;
             initial[endIdx] = 2;
             return { initialNodes: initial, initialRots: rots };
         }
 
-        // 2. BIKIN POLA JALANAN (Nilai -1)
         for (let row = 0; row < GRID_SIZE; row++) {
             for (let col = 0; col < GRID_SIZE; col++) {
                 if (template === 'small') {
-                    if (row % 5 === 0 || col % 5 === 0) initial[row * GRID_SIZE + col] = -1; // Jalan renggang
+                    if (row % 5 === 0 || col % 5 === 0) initial[row * GRID_SIZE + col] = -1;
                 } else if (template === 'metro') {
-                    if (row % 3 === 0 || col % 4 === 0) initial[row * GRID_SIZE + col] = -1; // Jalan padat
+                    if (row % 3 === 0 || col % 4 === 0) initial[row * GRID_SIZE + col] = -1;
                 }
             }
         }
 
-        // 3. BIKIN POLA LABIRIN ZIG-ZAG (Nilai -2)
         if (template === 'maze') {
             for (let r = 2; r < GRID_SIZE - 2; r += 2) {
                 for (let c = 0; c < GRID_SIZE; c++) {
-                    if (r % 4 === 2 && c > 1) initial[r * GRID_SIZE + c] = -2; // Dinding arah kanan
-                    if (r % 4 === 0 && c < GRID_SIZE - 2) initial[r * GRID_SIZE + c] = -2; // Dinding arah kiri
+                    if (r % 4 === 2 && c > 1) initial[r * GRID_SIZE + c] = -2;
+                    if (r % 4 === 0 && c < GRID_SIZE - 2) initial[r * GRID_SIZE + c] = -2;
                 }
             }
         }
 
-        // 4. KOSONGKAN AREA TENGAH (Biar pemandangan gak ketutup gedung)
         const mid = Math.floor(GRID_SIZE / 2);
         for (let r = mid - 2; r <= mid + 2; r++) {
             for (let c = mid - 3; c <= mid + 3; c++) {
@@ -104,27 +101,23 @@ export default function PathfindingGrid({
             }
         }
 
-        // Amankan Titik Start & End
         const safeZone = [
             startIdx, startIdx+1, startIdx+GRID_SIZE, startIdx+GRID_SIZE+1,
             endIdx, endIdx-1, endIdx-GRID_SIZE, endIdx-GRID_SIZE-1
         ];
         safeZone.forEach(idx => { if(idx >= 0 && idx < initial.length) initial[idx] = -1; });
 
-        // 5. TANAM BANGUNAN
         const buildingsList = Object.values(BUILDINGS).filter(b => b.id >= 7);
-        if (template === 'metro') buildingsList.reverse(); // Metro pakai gedung-gedung yang lebih besar duluan
+        if (template === 'metro') buildingsList.reverse();
 
         if (buildingsList.length > 0) {
             for (let row = 0; row < GRID_SIZE; row++) {
                 for (let col = 0; col < GRID_SIZE; col++) {
                     const idx = row * GRID_SIZE + col;
                     
-                    // Bangun hanya di tanah kosong (0) ATAU di titik dinding labirin (-2)
                     if (initial[idx] === 0 || initial[idx] === -2) { 
                         let bld = buildingsList[(row * 7 + col) % buildingsList.length];
                         
-                        // Kalau Labirin, paksa pakai bangunan berukuran 1x1 biar rapi
                         if (template === 'maze') {
                             bld = buildingsList.find(b => b.sizeX === 1 && b.sizeZ === 1) || buildingsList[0];
                         }
@@ -152,7 +145,7 @@ export default function PathfindingGrid({
                         if (template === 'maze' && initial[idx] !== -2) canPlace = false;
 
                         if (canPlace) {
-                            fp.forEach(i => initial[i] = 3); // Tandai footprint
+                            fp.forEach(i => initial[i] = 3);
                             initial[idx] = bld.id; 
                             rots[idx] = rStep; 
                         }
@@ -161,7 +154,6 @@ export default function PathfindingGrid({
             }
         }
 
-        // 6. BERSIHKAN BEKAS MARKA
         for (let i = 0; i < initial.length; i++) {
             if (initial[i] === -1 || initial[i] === -2) initial[i] = 0;
         }
@@ -172,13 +164,9 @@ export default function PathfindingGrid({
         return { initialNodes: initial, initialRots: rots };
     };
 
-    // Load template awal saat web pertama kali dibuka
     const [nodes, setNodes] = useState<number[]>(() => generateTemplate(templateId).initialNodes);
     const [nodeRotations, setNodeRotations] = useState<Record<number, number>>(() => generateTemplate(templateId).initialRots);
 
-    // =========================================================================
-    // LISTENER TEMPLATE: Akan berjalan otomatis setiap user klik card template
-    // =========================================================================
     useEffect(() => {
         setIsAnimating(false);
         hasShownPopup.current = false;
@@ -186,14 +174,13 @@ export default function PathfindingGrid({
         setIsCharNear(false);
         if (onStepUpdate) onStepUpdate(`Membangun: ${templateId}...`);
         
-        // Render kota baru berdasarkan pilihan!
         const newCity = generateTemplate(templateId);
         setNodes(newCity.initialNodes);
         setNodeRotations(newCity.initialRots);
         setSelectedNodeId(null);
         
-        if (onStepUpdate) setTimeout(() => onStepUpdate(""), 1000);
-    }, [templateId]); // <- Kunci utamanya di sini, dia mantau perubahan templateId
+        if (onStepUpdate) setTimeout(() => onStepUpdate("Menunggu Instruksi..."), 1000);
+    }, [templateId]);
 
     const [hoveredNode, setHoveredNode] = useState<number | null>(null)
     const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
@@ -207,20 +194,30 @@ export default function PathfindingGrid({
 
     const [isAnimating, setIsAnimating] = useState(false);
     const [activeNode, setActiveNode] = useState<number | null>(null);
+
+    // KUNCI: Menangkap map dari Logbook (jika di-restore)
+    useEffect(() => {
+        if (restoredMapData && restoredMapData.nodes) {
+            setNodes(restoredMapData.nodes);
+            setNodeRotations(restoredMapData.nodeRotations || {});
+        }
+    }, [restoredMapData]);
     
     useEffect(() => {
         if (isCharNear && walkPath.length > 0 && !hasShownPopup.current) {
             hasShownPopup.current = true;
             setIsAnimating(false);
+            setActiveNode(null);
             
             const timer = setTimeout(() => {
                 if (onFinishAnimation) {
-                    onFinishAnimation(lastStats.visited, lastStats.path, lastStats.time);
+                    // UPDATE: Kirim state nodes dan nodeRotations untuk disimpan ke Logbook
+                    onFinishAnimation(lastStats.visited, lastStats.path, lastStats.time, { nodes, nodeRotations });
                 }
-            }, 1200); 
+            }, 800); 
             return () => clearTimeout(timer);
         }
-    }, [isCharNear, walkPath, lastStats, onFinishAnimation]);
+    }, [isCharNear, walkPath, lastStats, onFinishAnimation, nodes, nodeRotations]);
 
     useEffect(() => {
         if (selectedNodeId !== null && rotationStep !== prevRotRef.current && !isAnimating) {
@@ -257,6 +254,7 @@ export default function PathfindingGrid({
         if (clearPathTrigger) {
             hasShownPopup.current = false; 
             setIsAnimating(false);
+            setActiveNode(null);
             setNodes((prev) => {
                 return prev.map(n => (n === 4 || n === 5) ? 0 : n);
             });
@@ -269,8 +267,8 @@ export default function PathfindingGrid({
         if (clearBoardTrigger) {
             hasShownPopup.current = false;
             setIsAnimating(false);
+            setActiveNode(null);
             
-            // "Bersihkan Environment" otomatis kembali ke Kosongan
             setNodes(() => {
                 const emptyCity = Array(GRID_SIZE * GRID_SIZE).fill(0);
                 const defaultStart = 1 * GRID_SIZE + 1;
@@ -315,8 +313,9 @@ export default function PathfindingGrid({
         setIsCharNear(false);
         setLastStats({ visited: visitedNodes.length, path: pathNodes.length, time: execTime });
         
-        const PHASE_GAP = 800; 
-        const SCAN_SPEED = 40; 
+        const PHASE_GAP = 400; 
+        const SCAN_SPEED = simSpeed; 
+        const PATH_SPEED = Math.max(10, simSpeed * 0.7); 
 
         if (onStepUpdate) onStepUpdate("Sistem Aktif: Memulai kalkulasi spasial...");
 
@@ -326,14 +325,16 @@ export default function PathfindingGrid({
                 const x = Math.floor(currentNode / GRID_SIZE);
                 const z = currentNode % GRID_SIZE;
 
+                setActiveNode(currentNode);
+
                 setNodes((prev) => { 
                     const n = [...prev]; 
                     if (n[currentNode] !== 1 && n[currentNode] !== 2) n[currentNode] = 4;
                     return n;
                 });
                 
-                if (onStepUpdate && i % 15 === 0) {
-                    onStepUpdate(`Proses: Evaluasi Node X:${x} Z:${z} (Blok ke-${i})`);
+                if (onStepUpdate && i % Math.max(1, Math.floor(200 / SCAN_SPEED)) === 0) {
+                    onStepUpdate(`Proses: Evaluasi Node [${x}, ${z}]`);
                 }
             }, SCAN_SPEED * i);
         }
@@ -344,24 +345,28 @@ export default function PathfindingGrid({
         for (let i = 0; i < pathNodes.length; i++) {
             setTimeout(() => {
                 const currentNode = pathNodes[i];
+                setActiveNode(null);
+
                 setNodes((prev) => { 
                     const n = [...prev]; 
                     if (n[currentNode] !== 1 && n[currentNode] !== 2) n[currentNode] = 5; 
                     return n; 
                 });
-            }, startTimePath + (50 * i));
+            }, startTimePath + (PATH_SPEED * i));
         }
 
-        const timeToFinishPath = startTimePath + (pathNodes.length * 50);
+        const timeToFinishPath = startTimePath + (pathNodes.length * PATH_SPEED);
         const startTimeCharacter = timeToFinishPath + PHASE_GAP;
 
         setTimeout(() => {
             if (pathNodes.length > 0) {
-                if (onStepUpdate) onStepUpdate("Jalur Terkunci: Memulai navigasi entitas...");
+                if (onStepUpdate) onStepUpdate("Jalur Ditemukan: Eksekusi navigasi target...");
                 setWalkPath(pathNodes);
             } else {
-                if (onStepUpdate) onStepUpdate("Error: Jalur tidak ditemukan (Unreachable).");
-                if (onFinishAnimation) onFinishAnimation(visitedNodes.length, 0, execTime);
+                if (onStepUpdate) onStepUpdate("⚠️ Error: Jalur terblokir (Unreachable).");
+                setActiveNode(null);
+                // UPDATE: Kirim state juga kalau error
+                if (onFinishAnimation) onFinishAnimation(visitedNodes.length, 0, execTime, { nodes, nodeRotations });
             }
         }, startTimeCharacter);
     };
@@ -384,12 +389,13 @@ export default function PathfindingGrid({
 
     const getColor = (status: number, id: number) => {
         if (id === selectedNodeId) return "#06b6d4" 
-        if (status === 1) return "#22c55e" 
-        if (status === 2) return "#ef4444" 
-        if (status === 3 || status >= 6) return "#475569" 
-        if (status === 4) return "#38bdf8" 
-        if (status === 5) return "#facc15" 
-        return "#ffffff" 
+        if (status === 1) return "#10b981" 
+        if (status === 2) return "#f43f5e" 
+        if (status === 3 || status >= 6) return "#0f172a" 
+        if (status === 4) return "#0891b2" 
+        if (status === 5) return "#10b981" 
+        
+        return "#1e293b" 
     }
 
     const tempObject = new THREE.Object3D()
@@ -400,12 +406,10 @@ export default function PathfindingGrid({
         let isHoverValid = false;
 
         if (!isAnimating) {
-            if (drawMode?.startsWith("bld-") && hoveredNode !== null) {
+            if (drawMode && BUILDINGS[drawMode] && hoveredNode !== null) {
                 const bldConfig = BUILDINGS[drawMode];
-                if (bldConfig) {
-                    hoverFootprint = getDynamicFootprint(hoveredNode, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, rotationStep);
-                    isHoverValid = hoverFootprint.length === (bldConfig.sizeX * bldConfig.sizeZ) && hoverFootprint.every(idx => isNodeEmpty(nodes[idx]));
-                }
+                hoverFootprint = getDynamicFootprint(hoveredNode, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, rotationStep);
+                isHoverValid = hoverFootprint.length === (bldConfig.sizeX * bldConfig.sizeZ) && hoverFootprint.every(idx => isNodeEmpty(nodes[idx]));
             }
             else if (drawMode === "select" && selectedNodeId !== null && hoveredNode !== null) {
                 const bldId = nodes[selectedNodeId];
@@ -437,7 +441,7 @@ export default function PathfindingGrid({
                 }
 
                 if (hoverFootprint.includes(id)) {
-                    hexColor = isHoverValid ? "#86efac" : "#fca5a5";
+                    hexColor = isHoverValid ? "#34d399" : "#fda4af";
                 }
                 tempColor.set(hexColor)
                 meshRef.current.setColorAt(id, tempColor)
@@ -523,18 +527,16 @@ export default function PathfindingGrid({
                 if (newSelectedId === id) newSelectedId = null;
             }
         }
-        else if (drawMode?.startsWith("bld-")) {
+        else if (drawMode && BUILDINGS[drawMode]) {
             const bldConfig = BUILDINGS[drawMode];
-            if (bldConfig) {
-                const footprint = getDynamicFootprint(id, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, rotationStep);
-                const isAreaClear = footprint.length === (bldConfig.sizeX * bldConfig.sizeZ) && footprint.every(idx => isNodeEmpty(newNodes[idx]));
-                
-                if (isAreaClear) {
-                    footprint.forEach(idx => newNodes[idx] = 3);
-                    newNodes[id] = bldConfig.id;
-                    newRotations[id] = rotationStep;
-                    isRotationsChanged = true; isStateChanged = true;
-                }
+            const footprint = getDynamicFootprint(id, GRID_SIZE, bldConfig.sizeX, bldConfig.sizeZ, rotationStep);
+            const isAreaClear = footprint.length === (bldConfig.sizeX * bldConfig.sizeZ) && footprint.every(idx => isNodeEmpty(newNodes[idx]));
+            
+            if (isAreaClear) {
+                footprint.forEach(idx => newNodes[idx] = 3);
+                newNodes[id] = bldConfig.id;
+                newRotations[id] = rotationStep;
+                isRotationsChanged = true; isStateChanged = true;
             }
         } 
         else if (drawMode === "start") {
@@ -565,7 +567,7 @@ export default function PathfindingGrid({
         if (isStateChanged) {
             setNodes(newNodes);
             if (drawMode === "delete") playSound("/sounds/delete.mp3", 0.4);
-            else if (drawMode?.startsWith("bld-")) playSound("/sounds/place.mp3", 0.6);
+            else if (drawMode && BUILDINGS[drawMode]) playSound("/sounds/place.mp3", 0.6);
         }
 
         if (isRotationsChanged) setNodeRotations(newRotations);
@@ -607,7 +609,7 @@ export default function PathfindingGrid({
         }
 
         let bldEntry = null;
-        if (drawMode?.startsWith("bld-")) {
+        if (drawMode && BUILDINGS[drawMode]) {
             bldEntry = BUILDINGS[drawMode];
         } else if (drawMode === "select" && selectedNodeId !== null) {
             const bldId = nodes[selectedNodeId];
