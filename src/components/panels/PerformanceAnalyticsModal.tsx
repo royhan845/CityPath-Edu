@@ -1,0 +1,303 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { motion } from "framer-motion"
+import { X, BarChart2, Activity, Trash2, Cpu, Save, Play, FolderOpen, Archive, Info } from "lucide-react"
+import { useSimulationStore, GlobalLogGroup } from "../../stores/useSimulationStore"
+
+export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => void }) {
+    const { 
+        history, globalHistory, addGlobalHistory, setGlobalHistory, setHistory, 
+        clearHistory, clearGlobalHistory, templateId, setTemplateId,
+        setAlgorithm, executeRun, executeClearPath
+    } = useSimulationStore();
+    
+    const [activeTab, setActiveTab] = useState<'current' | 'global'>('current');
+    const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+    
+    // State untuk melacak apakah history saat ini sudah disimpan ke global
+    const [isSessionSaved, setIsSessionSaved] = useState(false);
+
+    // Pantau perubahan history: Jika ada data baru masuk, berarti sesi belum disimpan
+    useEffect(() => {
+        setIsSessionSaved(false);
+    }, [history.length]); // Hanya terpicu jika jumlah data history berubah
+
+    const algorithmDetails: Record<string, { title: string, color: string }> = {
+        astar: { title: "A* Search", color: "text-emerald-400" },
+        greedy: { title: "Greedy BFS", color: "text-yellow-400" },
+        dijkstra: { title: "Dijkstra", color: "text-cyan-400" },
+        bfs: { title: "Breadth-First", color: "text-blue-400" },
+        dfs: { title: "Depth-First", color: "text-rose-400" }
+    };
+
+    const saveToGlobalLogbook = () => {
+        if (history.length === 0 || isSessionSaved) return;
+        const name = prompt("Beri nama untuk arsip eksperimen ini:", `Eksperimen ${new Date().toLocaleTimeString('id-ID')}`);
+        if (!name) return;
+        
+        const newGroup: GlobalLogGroup = { 
+            id: Date.now().toString(), name, 
+            date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }), 
+            template: templateId || 'custom', records: [...history] 
+        };
+        addGlobalHistory(newGroup);
+        setIsSessionSaved(true); // Tandai bahwa sesi ini sudah disimpan
+        setActiveTab('global');
+    };
+
+    const deleteSingleGroup = (id: string) => {
+        if (confirm("Hapus data eksperimen ini dari arsip?")) {
+            setGlobalHistory(globalHistory.filter(g => g.id !== id));
+            setSelectedGroups(prev => prev.filter(selectedId => selectedId !== id));
+        }
+    };
+
+    const deleteSelectedGroups = () => {
+        if (confirm(`Hapus ${selectedGroups.length} eksperimen terpilih?`)) {
+            setGlobalHistory(globalHistory.filter(g => !selectedGroups.includes(g.id)));
+            setSelectedGroups([]);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-[#060816]/80 backdrop-blur-md" />
+
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-4xl bg-[#0B1120] border border-slate-700/60 shadow-[0_0_50px_rgba(34,211,238,0.1)] rounded-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+                {/* Header Tabs */}
+                <div className="p-5 border-b border-slate-800 bg-slate-900/50">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-cyan-500/10 rounded-lg text-cyan-400"><BarChart2 size={20} /></div>
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-100 font-mono tracking-wide">PERFORMANCE MATRIX</h2>
+                                <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Dual-Storage Analytics</p>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="p-2 text-slate-400 hover:text-rose-400"><X size={20} /></button>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setActiveTab('current')} className={`px-4 py-2 text-[10px] font-bold uppercase rounded-lg transition-colors ${activeTab === 'current' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}>Sesi Aktif ({history.length})</button>
+                        <button onClick={() => setActiveTab('global')} className={`px-4 py-2 text-[10px] font-bold uppercase rounded-lg transition-colors ${activeTab === 'global' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}>Arsip Global ({globalHistory.length})</button>
+                    </div>
+                </div>
+
+                {/* Body Content */}
+                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                    
+                    {/* TAB 1: CURRENT SESSION */}
+                    {activeTab === 'current' && (
+                        <div className="space-y-6">
+                            {history.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-48 text-slate-500 space-y-4">
+                                    <Activity size={48} className="opacity-20" />
+                                    <p className="font-mono text-xs uppercase tracking-widest">Belum ada data aktif. Muat dari arsip atau jalankan simulasi.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Kesimpulan Analisis */}
+                                    <div className="bg-slate-900/50 border border-slate-800/80 p-5 rounded-2xl relative overflow-hidden shadow-inner">
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Info size={16} className="text-cyan-400" />
+                                            <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-widest">Kesimpulan Analisis</h4>
+                                        </div>
+                                        
+                                        <div className="text-xs text-slate-300 leading-relaxed">
+                                            {history.length === 1 ? (
+                                                <div className="p-3 bg-[#050816] rounded-xl border border-slate-800/50 text-slate-400 italic">
+                                                    Sistem membutuhkan minimal dua algoritma untuk melakukan perbandingan. Silakan jalankan algoritma lain pada rintangan yang sama.
+                                                </div>
+                                            ) : (
+                                                (() => {
+                                                    const bestVisited = [...history].sort((a, b) => a.visited - b.visited)[0];
+                                                    const fastest = [...history].sort((a, b) => a.time - b.time)[0];
+                                                    const shortestPath = [...history].sort((a, b) => a.path - b.path)[0];
+                                                    const allSamePath = history.every(r => r.path === history[0].path);
+
+                                                    return (
+                                                        <div className="space-y-4">
+                                                            <p>
+                                                                <span className="text-emerald-400 font-bold block mb-1">1. Paling Hemat Memori (Pengecekan Minimum)</span>
+                                                                Algoritma <b className={algorithmDetails[bestVisited.algo]?.color}>{algorithmDetails[bestVisited.algo]?.title || bestVisited.algo}</b> bekerja paling efisien dengan hanya memeriksa <b>{bestVisited.visited} blok jalan</b>. Semakin sedikit blok yang diperiksa, semakin ringan beban komputasinya pada perangkat.
+                                                            </p>
+                                                            <p>
+                                                                <span className="text-amber-400 font-bold block mb-1">2. Waktu Eksekusi Tercepat</span>
+                                                                Kecepatan pemrosesan dipimpin oleh <b className={algorithmDetails[fastest.algo]?.color}>{algorithmDetails[fastest.algo]?.title || fastest.algo}</b> yang menyelesaikan pencarian dalam waktu <b>{fastest.time < 0.01 ? "< 0.01" : fastest.time.toFixed(2)} ms</b>. Sangat ideal untuk sistem yang membutuhkan respons instan.
+                                                            </p>
+                                                            {!allSamePath ? (
+                                                                <div className="p-3 bg-rose-500/5 border border-rose-500/20 rounded-xl">
+                                                                    <span className="text-rose-400 font-bold block mb-1">3. Jarak Rute Terpendek</span>
+                                                                    Terdapat perbedaan jalur antar algoritma. <b className={algorithmDetails[shortestPath.algo]?.color}>{algorithmDetails[shortestPath.algo]?.title || shortestPath.algo}</b> berhasil menemukan rute paling akurat dan terpendek dengan total <b>{shortestPath.path} langkah</b>.
+                                                                </div>
+                                                            ) : (
+                                                                <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-emerald-100/70">
+                                                                    <span className="text-emerald-400 font-bold block mb-1">3. Jarak Rute Terpendek</span>
+                                                                    Seluruh algoritma berhasil menemukan rute terpendek yang sama persis, yaitu <b>{history[0].path} langkah</b>.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Tabel Riwayat Sesi Aktif */}
+                                    <div className="border border-slate-800/80 rounded-2xl overflow-hidden bg-[#050816]/50">
+                                        <div className="bg-[#0B1120] py-3 px-4 border-b border-slate-800/80 grid grid-cols-12 gap-2 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                            <div className="col-span-4">Algoritma</div>
+                                            <div className="col-span-2 text-right">Cek Blok</div>
+                                            <div className="col-span-2 text-right">Jarak Rute</div>
+                                            <div className="col-span-3 text-right">Waktu (ms)</div>
+                                            <div className="col-span-1 text-center">Aksi</div>
+                                        </div>
+                                        <div className="p-2 space-y-1">
+                                            {history.map((record, idx) => (
+                                                <div key={idx} className={`grid grid-cols-12 gap-2 items-center px-2 py-2 rounded-xl text-xs font-mono ${idx === history.length - 1 ? 'bg-slate-800/50 border border-slate-700/50' : 'hover:bg-slate-800/30'}`}>
+                                                    <div className="col-span-4 flex items-center gap-2">
+                                                        <Cpu size={12} className={algorithmDetails[record.algo]?.color || "text-slate-400"} />
+                                                        <span className={`font-bold uppercase ${algorithmDetails[record.algo]?.color || "text-slate-200"}`}>{algorithmDetails[record.algo]?.title || record.algo}</span>
+                                                    </div>
+                                                    <div className="col-span-2 text-right text-cyan-400 font-bold">{record.visited}</div>
+                                                    <div className="col-span-2 text-right text-emerald-400 font-bold">{record.path}</div>
+                                                    <div className="col-span-3 text-right text-amber-400 font-bold">{record.time < 0.01 ? '< 0.01' : record.time.toFixed(2)}</div>
+                                                    
+                                                    <div className="col-span-1 flex justify-center">
+                                                        <button 
+                                                            onClick={() => {
+                                                                setAlgorithm(record.algo); 
+                                                                executeClearPath();        
+                                                                onClose();                 
+                                                                setTimeout(() => { executeRun(); }, 300);
+                                                            }}
+                                                            className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/30 text-cyan-400 rounded transition-colors"
+                                                            title="Jalankan Ulang Algoritma Ini"
+                                                        >
+                                                            <Play size={10} fill="currentColor" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* TAB 2: GLOBAL LOGBOOK */}
+                    {activeTab === 'global' && (
+                        <div className="space-y-4">
+                            {globalHistory.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-48 text-slate-500 space-y-4">
+                                    <Archive size={48} className="opacity-20" />
+                                    <p className="font-mono text-xs uppercase tracking-widest">Logbook global kosong.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Action Bar Multiple Delete */}
+                                    <div className="flex justify-between items-center p-3 bg-slate-900/50 border border-slate-800/80 rounded-xl">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedGroups.length === globalHistory.length}
+                                                onChange={() => {
+                                                    if (selectedGroups.length === globalHistory.length) {
+                                                        setSelectedGroups([]);
+                                                    } else {
+                                                        setSelectedGroups(globalHistory.map(g => g.id));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 accent-cyan-500 rounded bg-slate-800 border-slate-700 cursor-pointer"
+                                            />
+                                            <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+                                                Pilih Semua ({selectedGroups.length}/{globalHistory.length})
+                                            </span>
+                                        </label>
+
+                                        {selectedGroups.length > 0 && (
+                                            <button 
+                                                onClick={deleteSelectedGroups}
+                                                className="flex items-center gap-2 text-[10px] text-rose-400 hover:text-rose-300 font-bold uppercase tracking-widest bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/30 transition-colors"
+                                            >
+                                                <Trash2 size={12} /> Hapus Terpilih
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* List Arsip */}
+                                    {globalHistory.map(group => (
+                                        <div key={group.id} className={`p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-colors border ${selectedGroups.includes(group.id) ? 'bg-cyan-500/5 border-cyan-500/50' : 'bg-slate-900/40 border-slate-800/80'}`}>
+                                            <div className="flex gap-3 items-start w-full md:w-auto flex-1">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={selectedGroups.includes(group.id)}
+                                                    onChange={() => {
+                                                        setSelectedGroups(prev => 
+                                                            prev.includes(group.id) ? prev.filter(id => id !== group.id) : [...prev, group.id]
+                                                        )
+                                                    }}
+                                                    className="w-4 h-4 mt-1 accent-cyan-500 rounded bg-slate-800 border-slate-700 cursor-pointer"
+                                                />
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-white">{group.name}</h4>
+                                                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">{group.date} • Map Template: <span className="text-cyan-400 uppercase font-bold">{group.template}</span></p>
+                                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-400 font-mono">
+                                                        {group.records.map((rec, rIdx) => (
+                                                            <span key={rIdx}>
+                                                                <b className={algorithmDetails[rec.algo]?.color}>{rec.algo.toUpperCase()}</b> ({rec.path}L / {rec.time.toFixed(1)}ms)
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons (Load & Delete Single) */}
+                                            <div className="flex gap-2 shrink-0 w-full md:w-auto justify-end ml-7 md:ml-0">
+                                                <button 
+                                                    onClick={() => {
+                                                        setHistory([...group.records]);
+                                                        setTemplateId(group.template);
+                                                        setIsSessionSaved(true); // Tandai sesi sebagai tersimpan saat diload dari arsip
+                                                        setActiveTab('current');
+                                                    }}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                                                >
+                                                    <FolderOpen size={12} /> Muat
+                                                </button>
+                                                <button 
+                                                    onClick={() => deleteSingleGroup(group.id)}
+                                                    className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl transition-colors"
+                                                    title="Hapus Grup Ini"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Controls */}
+                <div className="p-5 border-t border-slate-800 bg-slate-900/50 flex gap-3">
+                    {activeTab === 'current' && history.length > 0 && !isSessionSaved && (
+                        <button onClick={saveToGlobalLogbook} className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/20 uppercase transition-colors">
+                            <Save size={14} /> Simpan Sesi
+                        </button>
+                    )}
+                    <button onClick={activeTab === 'current' ? clearHistory : clearGlobalHistory} className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg hover:bg-rose-500/20 uppercase transition-colors ml-auto">
+                        <Trash2 size={14} /> {activeTab === 'current' ? 'Hapus Sesi Aktif' : 'Kosongkan Arsip'}
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    )
+}
