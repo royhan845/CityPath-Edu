@@ -1,20 +1,25 @@
 "use client"
 
 import { useSimulationStore } from "../../stores/useSimulationStore"
+import { FastForward, Zap, Route, Network, ArrowRightCircle, Target } from "lucide-react";
 
 export default function PlaybackControls() {
+    
     const { 
         algorithm, playbackStatus, setPlaybackStatus, liveText, 
         simSpeed, setSimSpeed, executeRun, executeClearPath, 
-        executeStepForward, executeStepBackward, executeStop 
+        executeStepForward, executeStepBackward, executeStop, executeSkip
     } = useSimulationStore();
 
-    // Mapping icon sederhana
+    // Mapping icon menggunakan Lucide-React agar seragam dan modern
     const getAlgoIcon = (algo: string) => {
         switch(algo) {
-            case 'astar': return '⭐'; case 'greedy': return '🏃‍♂️';
-            case 'dijkstra': return '🌊'; case 'bfs': return '⭕';
-            case 'dfs': return '⛏️'; default: return '🤖';
+            case 'astar': return <Target size={18} className="text-emerald-400" />; 
+            case 'greedy': return <Zap size={18} className="text-yellow-400" />;
+            case 'dijkstra': return <Network size={18} className="text-cyan-400" />; 
+            case 'bfs': return <ArrowRightCircle size={18} className="text-blue-400" />;
+            case 'dfs': return <Route size={18} className="text-rose-400" />; 
+            default: return <Target size={18} className="text-slate-400" />;
         }
     }
 
@@ -56,9 +61,18 @@ export default function PlaybackControls() {
                             </button>
                             <button onClick={executeStepForward} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 hover:bg-slate-700 text-cyan-400 transition-colors" title="Maju 1 Langkah">⏭</button>
                         </div>
-                        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-slate-400 font-mono text-[10px]">
-                            {getAlgoIcon(algorithm)}
-                        </div>
+                        <button 
+                            onClick={executeSkip}
+                            disabled={playbackStatus !== 'playing'}
+                            className={`p-2 rounded-lg transition-colors ${
+                                playbackStatus === 'playing' 
+                                ? 'text-cyan-400 hover:bg-cyan-500/20' 
+                                : 'text-slate-600 cursor-not-allowed'
+                            }`}
+                            title="Lewati Animasi"
+                        >
+                            <FastForward size={20} />
+                        </button>
                     </div>
                 )}
             </div>

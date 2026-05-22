@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { X, BarChart2, Activity, Trash2, Cpu, Save, Play, FolderOpen, Archive, Info } from "lucide-react"
 import { useSimulationStore, GlobalLogGroup } from "../../stores/useSimulationStore"
 
@@ -9,7 +9,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
     const { 
         history, globalHistory, addGlobalHistory, setGlobalHistory, setHistory, 
         clearHistory, clearGlobalHistory, templateId, setTemplateId,
-        setAlgorithm, executeRun, executeClearPath
+        setAlgorithm, executeRun, executeClearPath, setRestoredMapData
     } = useSimulationStore();
     
     const [activeTab, setActiveTab] = useState<'current' | 'global'>('current');
@@ -17,11 +17,15 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
     
     // State untuk melacak apakah history saat ini sudah disimpan ke global
     const [isSessionSaved, setIsSessionSaved] = useState(false);
+    
+    // State untuk Custom Save Dialog
+    const [showSaveDialog, setShowSaveDialog] = useState(false);
+    const [saveName, setSaveName] = useState("");
 
     // Pantau perubahan history: Jika ada data baru masuk, berarti sesi belum disimpan
     useEffect(() => {
         setIsSessionSaved(false);
-    }, [history.length]); // Hanya terpicu jika jumlah data history berubah
+    }, [history.length]);
 
     const algorithmDetails: Record<string, { title: string, color: string }> = {
         astar: { title: "A* Search", color: "text-emerald-400" },
@@ -31,18 +35,28 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
         dfs: { title: "Depth-First", color: "text-rose-400" }
     };
 
-    const saveToGlobalLogbook = () => {
+    // Fungsi membuka dialog
+    const handleOpenSaveDialog = () => {
         if (history.length === 0 || isSessionSaved) return;
-        const name = prompt("Beri nama untuk arsip eksperimen ini:", `Eksperimen ${new Date().toLocaleTimeString('id-ID')}`);
-        if (!name) return;
+        setSaveName(`Eksperimen ${new Date().toLocaleTimeString('id-ID')}`);
+        setShowSaveDialog(true);
+    };
+
+    // Fungsi eksekusi simpan
+    const confirmSave = () => {
+        if (!saveName.trim()) return;
         
         const newGroup: GlobalLogGroup = { 
-            id: Date.now().toString(), name, 
+            id: Date.now().toString(), 
+            name: saveName.trim(), 
             date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }), 
-            template: templateId || 'custom', records: [...history] 
+            template: templateId || 'custom', 
+            records: [...history] 
         };
+        
         addGlobalHistory(newGroup);
-        setIsSessionSaved(true); // Tandai bahwa sesi ini sudah disimpan
+        setIsSessionSaved(true);
+        setShowSaveDialog(false);
         setActiveTab('global');
     };
 
@@ -68,6 +82,53 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                 initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 className="relative w-full max-w-4xl bg-[#0B1120] border border-slate-700/60 shadow-[0_0_50px_rgba(34,211,238,0.1)] rounded-2xl overflow-hidden flex flex-col max-h-[85vh]"
             >
+                <AnimatePresence>
+                    {showSaveDialog && (
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#060816]/90 backdrop-blur-sm"
+                        >
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                className="w-full max-w-sm bg-slate-900 border border-emerald-500/30 p-6 rounded-2xl shadow-[0_0_40px_rgba(16,185,129,0.15)] flex flex-col"
+                            >
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
+                                        <Save size={18} />
+                                    </div>
+                                    <h3 className="text-sm font-bold text-slate-100 font-mono uppercase tracking-widest">Simpan Arsip</h3>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mb-5 font-mono leading-relaxed">
+                                    Masukkan label identifikasi untuk menyimpan data sesi komputasi ini ke dalam Logbook Global.
+                                </p>
+                                <input
+                                    type="text"
+                                    value={saveName}
+                                    onChange={(e) => setSaveName(e.target.value)}
+                                    className="w-full bg-[#050816] border border-slate-700 rounded-xl px-4 py-3 text-xs text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500/50 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)] mb-6 placeholder-slate-600 transition-colors"
+                                    placeholder="Nama arsip..."
+                                    autoFocus
+                                    onKeyDown={(e) => e.key === 'Enter' && confirmSave()}
+                                />
+                                <div className="flex gap-3 justify-end mt-auto">
+                                    <button 
+                                        onClick={() => setShowSaveDialog(false)} 
+                                        className="px-5 py-2.5 rounded-xl text-[10px] font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors uppercase tracking-widest"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button 
+                                        onClick={confirmSave} 
+                                        className="px-5 py-2.5 rounded-xl text-[10px] font-bold text-[#050816] bg-emerald-400 hover:bg-emerald-300 transition-colors uppercase tracking-widest flex items-center gap-2 shadow-[0_0_15px_rgba(52,211,153,0.4)]"
+                                    >
+                                        Konfirmasi
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* Header Tabs */}
                 <div className="p-5 border-b border-slate-800 bg-slate-900/50">
                     <div className="flex justify-between items-center mb-4">
@@ -171,9 +232,12 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                         <button 
                                                             onClick={() => {
                                                                 setAlgorithm(record.algo); 
+                                                                if (record.mapData) {
+                                                                    setRestoredMapData(record.mapData);
+                                                                }
                                                                 executeClearPath();        
                                                                 onClose();                 
-                                                                setTimeout(() => { executeRun(); }, 300);
+                                                                setTimeout(() => { executeRun(); }, 350); 
                                                             }}
                                                             className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/30 text-cyan-400 rounded transition-colors"
                                                             title="Jalankan Ulang Algoritma Ini"
@@ -263,7 +327,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                     onClick={() => {
                                                         setHistory([...group.records]);
                                                         setTemplateId(group.template);
-                                                        setIsSessionSaved(true); // Tandai sesi sebagai tersimpan saat diload dari arsip
+                                                        setIsSessionSaved(true); 
                                                         setActiveTab('current');
                                                     }}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
@@ -289,7 +353,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                 {/* Footer Controls */}
                 <div className="p-5 border-t border-slate-800 bg-slate-900/50 flex gap-3">
                     {activeTab === 'current' && history.length > 0 && !isSessionSaved && (
-                        <button onClick={saveToGlobalLogbook} className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/20 uppercase transition-colors">
+                        <button onClick={handleOpenSaveDialog} className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/20 uppercase transition-colors">
                             <Save size={14} /> Simpan Sesi
                         </button>
                     )}

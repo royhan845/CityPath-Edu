@@ -21,10 +21,12 @@ export function useSimulationPlayback(
     const workerRef = useRef<Worker | null>(null);
     const lastRunTrigger = useRef(0); 
 
+    const lastSkipTrigger = useRef(0);
+
     const {
         algorithm, simSpeed, playbackStatus, setPlaybackStatus, setLiveText,
-        runTrigger, clearPathTrigger, clearBoardTrigger, stepForwardTrigger, stepBackwardTrigger, stopTrigger,
-        setStats
+        runTrigger, clearPathTrigger, clearBoardTrigger, stepForwardTrigger, 
+        stepBackwardTrigger, stopTrigger, skipTrigger, setStats
     } = useSimulationStore();
 
     useEffect(() => {
@@ -43,11 +45,12 @@ export function useSimulationPlayback(
         if (runTrigger > lastRunTrigger.current && workerRef.current) {
             lastRunTrigger.current = runTrigger;
             resetPlaybackState();
-            setLiveText("Memproses algoritma di background...");
+            
+            setLiveText("Menginisiasi mesin komputasi algoritma...");
             
             workerRef.current.onmessage = (e: MessageEvent<PathfindingResult>) => {
                 if (e.data.error) {
-                    setLiveText(`Error: ${e.data.error}`);
+                    setLiveText(`Kegagalan proses: ${e.data.error}`);
                     setPlaybackStatus('idle');
                     setIsAnimating(false);
                     return;
@@ -76,9 +79,33 @@ export function useSimulationPlayback(
         if (stopTrigger > 0) {
             resetPlaybackState();
             setPlaybackStatus('idle');
-            setLiveText("Eksekusi dibatalkan.");
+            setLiveText("Interupsi manual: Simulasi dihentikan.");
         }
     }, [stopTrigger, resetPlaybackState, setPlaybackStatus, setLiveText]);
+
+    useEffect(() => {
+        if (skipTrigger > lastSkipTrigger.current) {
+            lastSkipTrigger.current = skipTrigger;
+            
+            // Hanya bisa di-skip jika animasi sedang berjalan dan belum selesai
+            if (isAnimating && !hasShownPopup.current) {
+                const totalSteps = visNodes.length + pathNodes.length;
+                
+                // 1. Langsung render semua node ke tahap akhir
+                setAnimStep(totalSteps); 
+                
+                // 2. Matikan status animasi & siapkan penyelesaian
+                setIsAnimating(false);
+                setActiveNode(null);
+                hasShownPopup.current = true;
+                setPlaybackStatus('idle');
+                setLiveText("Animasi dilewati. Mengkalkulasi hasil akhir...");
+                
+                // 3. Panggil callback finish seketika
+                onFinishAnimation(visNodes.length, pathNodes.length, execStats.time, { nodes, nodeRotations });
+            }
+        }
+    }, [skipTrigger, isAnimating, visNodes, pathNodes, execStats, nodes, nodeRotations, onFinishAnimation, setPlaybackStatus, setLiveText]);
 
     // 3. ANIMATION LOOP & FIX KOORDINAT
     useEffect(() => {
@@ -87,7 +114,7 @@ export function useSimulationPlayback(
         const isPaused = playbackStatus === 'paused';
 
         if (isAnimating && totalSteps === 0 && !hasShownPopup.current && playbackStatus === 'playing') {
-            setLiveText("⚠️ Rute terblokir total.");
+            setLiveText("Jalur terisolasi: Target tidak dapat diakses.");
             hasShownPopup.current = true; setIsAnimating(false); setPlaybackStatus('idle');
             onFinishAnimation(0, 0, execStats.time, { nodes, nodeRotations });
             return;
@@ -99,11 +126,11 @@ export function useSimulationPlayback(
                 const speed = isPathStep ? Math.max(10, simSpeed * 0.7) : simSpeed;
 
                 if (isPathStep) {
-                    setLiveText("Jalur Ditemukan: Menavigasi target...");
+                    setLiveText("Rute optimal ditemukan. Mengeksekusi navigasi...");
                 } else if (animStep % Math.max(1, Math.floor(200 / speed)) === 0) {
                     const currentNode = visNodes[animStep];
                     if (currentNode !== undefined && currentNode !== null) {
-                        setLiveText(`Mengevaluasi Node [${Math.floor(currentNode / GRID_SIZE)}, ${currentNode % GRID_SIZE}]`);
+                        setLiveText(`Memindai matriks spasial [${Math.floor(currentNode / GRID_SIZE)}, ${currentNode % GRID_SIZE}]`);
                     }
                 }
 
@@ -115,7 +142,7 @@ export function useSimulationPlayback(
                 if (pathNodes.length > 0) {
                     setWalkPath(pathNodes);
                 } else {
-                    setLiveText("⚠️ Sistem Peringatan: Tidak ada jalur terbuka.");
+                    setLiveText("Peringatan sistem: Tidak ditemukan rute terbuka menuju target.");
                     hasShownPopup.current = true; setIsAnimating(false); setPlaybackStatus('idle');
                     onFinishAnimation(visNodes.length, 0, execStats.time, { nodes, nodeRotations });
                 }
@@ -131,8 +158,6 @@ export function useSimulationPlayback(
             setIsAnimating(false); 
             setActiveNode(null); 
             
-            // KUNCI PERBAIKAN: setPlaybackStatus dipindah ke DALAM timeout
-            // Ini mencegah React mematikan (cleanup) timeout secara paksa
             const timer = setTimeout(() => {
                 setPlaybackStatus('idle');
                 onFinishAnimation(visNodes.length, pathNodes.length, execStats.time, { nodes, nodeRotations });

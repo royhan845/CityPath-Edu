@@ -5,8 +5,16 @@ export interface GlobalLogGroup {
     name: string; 
     date: string; 
     template: string; 
-    records: { algo: string, visited: number, path: number, time: number }[]; 
+    records: { algo: string, visited: number, path: number, time: number, mapData?: any }[]; 
     mapState?: any; 
+}
+
+export interface HistoryRecord { 
+    algo: string, 
+    visited: number, 
+    path: number, 
+    time: number, 
+    mapData?: any 
 }
 
 interface SimulationState {
@@ -18,8 +26,13 @@ interface SimulationState {
     playbackStatus: 'idle' | 'playing' | 'paused';
     liveText: string;
 
+    skipTrigger: number;
+
     stats: { visited: number, path: number, time: number } | null;
-    history: { algo: string, visited: number, path: number, time: number }[];
+    history: HistoryRecord[];
+    
+    restoredMapData: any;
+    setRestoredMapData: (data: any) => void;
     
     globalHistory: GlobalLogGroup[];
 
@@ -44,8 +57,8 @@ interface SimulationState {
     setLiveText: (val: string) => void;
 
     setStats: (stats: { visited: number, path: number, time: number } | null) => void;
-    addHistory: (record: { algo: string, visited: number, path: number, time: number }) => void;
-    setHistory: (history: { algo: string, visited: number, path: number, time: number }[]) => void;
+    setHistory: (history: HistoryRecord[]) => void;
+    addHistory: (record: HistoryRecord) => void;
     
     setGlobalHistory: (val: GlobalLogGroup[]) => void;
     addGlobalHistory: (record: GlobalLogGroup) => void;
@@ -55,6 +68,7 @@ interface SimulationState {
     clearHistory: () => void;
 
     executeRun: () => void;
+    executeSkip: () => void;
     executeClearPath: () => void;
     executeClearBoard: () => void;
     executeStepForward: () => void;
@@ -71,8 +85,13 @@ export const useSimulationStore = create<SimulationState>((set) => ({
     playbackStatus: 'idle',
     liveText: "Sistem Siap. Silakan bangun rintangan atau pilih template.",
 
+    skipTrigger: 0,
+    
     stats: null,
     history: [],
+    
+    restoredMapData: null,
+
     globalHistory: [],
     hasNewReport: false,
 
@@ -91,12 +110,39 @@ export const useSimulationStore = create<SimulationState>((set) => ({
 
     setStats: (stats) => set({ stats }),
     setHasNewReport: (val) => set({ hasNewReport: val }),
+    
+    setRestoredMapData: (data) => set({ restoredMapData: data }),
     setHistory: (history) => set({ history }),
+    
     addHistory: (record) => set((state) => {
+        // 1. PENGECEKAN KONSISTENSI MAP (Auto-Archive)
+        if (state.history.length > 0) {
+            const prevNodes = JSON.stringify(state.history[0].mapData?.nodes || []);
+            const currNodes = JSON.stringify(record.mapData?.nodes || []);
+
+            if (prevNodes !== currNodes) {
+                const autoSavedGroup: GlobalLogGroup = {
+                    id: Date.now().toString(),
+                    name: `Auto-Save (Perubahan Map)`,
+                    date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+                    template: state.templateId || 'custom',
+                    records: [...state.history]
+                };
+                
+                return { 
+                    globalHistory: [autoSavedGroup, ...state.globalHistory],
+                    history: [record] 
+                };
+            }
+        }
+
+        // 2. PENGECEKAN DUPLIKASI (Hanya berjalan jika map-nya sama persis)
         const isDuplicate = state.history.some(
             (h) => h.algo === record.algo && h.visited === record.visited && h.path === record.path
         );
         if (isDuplicate) return state;
+
+        // 3. JIKA MAP SAMA DAN TIDAK DUPLIKAT, TAMBAHKAN KE TABEL
         return { history: [...state.history, record] };
     }),
     
@@ -108,6 +154,7 @@ export const useSimulationStore = create<SimulationState>((set) => ({
     clearHistory: () => set({ history: [], stats: null }),
 
     executeRun: () => set((s) => ({ runTrigger: s.runTrigger + 1, playbackStatus: 'playing' })),
+    executeSkip: () => set((s) => ({ skipTrigger: s.skipTrigger + 1 })),
     executeClearPath: () => set((s) => ({ clearPathTrigger: s.clearPathTrigger + 1, playbackStatus: 'idle' })),
     executeClearBoard: () => set((s) => ({ clearBoardTrigger: s.clearBoardTrigger + 1, playbackStatus: 'idle' })),
     executeStepForward: () => set((s) => ({ stepForwardTrigger: s.stepForwardTrigger + 1, playbackStatus: 'paused' })),
