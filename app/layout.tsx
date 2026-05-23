@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-// --- IMPORT DISINI ---
 import StatusJaringan from "../src/components/panels/StatusJaringan"; 
 
 const geistSans = Geist({
@@ -60,8 +59,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {/* --- PASANG DISINI --- */}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden`}>
         <StatusJaringan /> 
         {children}
       </body>

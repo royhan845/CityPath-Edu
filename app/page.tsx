@@ -63,17 +63,20 @@ export default function Home() {
     if (isSimulating) {
         return (
             <div className="fixed inset-0 w-full h-[100dvh] animate-in zoom-in-95 fade-in duration-700 bg-[#060816] z-50">
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none flex flex-col items-center">
+                
+                {/* 1. Sembunyikan badge di HP (tambah hidden md:flex) */}
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none hidden md:flex flex-col items-center">
                     <div className="glass-panel px-5 py-2 rounded-full font-mono text-[10px] tracking-widest text-cyan-400 uppercase flex items-center gap-2">
                         <Activity size={12} className="animate-pulse" /> Live Simulation Environment
                     </div>
                 </div>
                 
+                {/* 2. Buat tombol Terminate jadi icon kecil di HP */}
                 <button 
                     onClick={() => setIsSimulating(false)}
-                    className="group absolute top-6 right-6 z-[100] glass-panel hover:bg-rose-950/20 hover:border-rose-500/30 hover:shadow-[0_0_20px_rgba(244,63,94,0.1)] text-slate-400 hover:text-rose-400 px-5 py-2.5 rounded-[4px] font-mono text-[10px] transition-all duration-300 flex items-center gap-2 uppercase tracking-widest"
+                    className="group absolute top-6 right-4 md:right-6 z-[100] glass-panel hover:bg-rose-950/20 hover:border-rose-500/30 hover:shadow-[0_0_20px_rgba(244,63,94,0.1)] text-slate-400 hover:text-rose-400 px-3 md:px-5 py-3 md:py-2.5 rounded-xl md:rounded-[4px] font-mono text-[10px] transition-all duration-300 flex items-center gap-2 uppercase tracking-widest"
                 >
-                    <TerminalSquare size={14} /> Terminate
+                    <TerminalSquare size={16} /> <span className="hidden md:inline">Terminate</span>
                 </button>
                 
                 <Scene initialMode={sceneMode} />
@@ -82,7 +85,7 @@ export default function Home() {
     }
 
     return (
-        <div className="w-full h-[100dvh] overflow-y-auto snap-y snap-mandatory bg-[#060816] text-slate-300 font-sans selection:bg-cyan-400/30 scroll-smooth relative">
+        <div className="hide-scrollbar w-full h-[100dvh] overflow-y-auto snap-y snap-mandatory bg-[#060816] text-slate-300 font-sans selection:bg-cyan-400/30 scroll-smooth relative">
             <CustomStyles />
 
             {/* Background Grid & Scanline */}

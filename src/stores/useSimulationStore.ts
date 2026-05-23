@@ -32,12 +32,10 @@ interface SimulationState {
     history: HistoryRecord[];
     
     restoredMapData: any;
-    setRestoredMapData: (data: any) => void;
     
     globalHistory: GlobalLogGroup[];
 
     hasNewReport: boolean;
-    setHasNewReport: (val: boolean) => void;
     
     showTutorial: boolean;
 
@@ -48,6 +46,8 @@ interface SimulationState {
     stepBackwardTrigger: number;
     stopTrigger: number;
 
+    mobileMenuOpen: 'editor' | 'metrics' | null;
+
     setAlgorithm: (val: string) => void;
     setDrawMode: (val: string) => void;
     setRotationStep: (val: number | ((prev: number) => number)) => void;
@@ -55,17 +55,21 @@ interface SimulationState {
     setSimSpeed: (val: number) => void;
     setPlaybackStatus: (val: 'idle' | 'playing' | 'paused') => void;
     setLiveText: (val: string) => void;
-
     setStats: (stats: { visited: number, path: number, time: number } | null) => void;
+
     setHistory: (history: HistoryRecord[]) => void;
-    addHistory: (record: HistoryRecord) => void;
-    
     setGlobalHistory: (val: GlobalLogGroup[]) => void;
+
+    addHistory: (record: HistoryRecord) => void;
     addGlobalHistory: (record: GlobalLogGroup) => void;
+
     clearGlobalHistory: () => void;
+    clearHistory: () => void;
 
     setShowTutorial: (show: boolean) => void;
-    clearHistory: () => void;
+    setHasNewReport: (val: boolean) => void;
+    setRestoredMapData: (data: any) => void;
+    setMobileMenuOpen: (menu: 'editor' | 'metrics' | null) => void;
 
     executeRun: () => void;
     executeSkip: () => void;
@@ -87,18 +91,22 @@ export const useSimulationStore = create<SimulationState>((set) => ({
 
     skipTrigger: 0,
     
-    stats: null,
     history: [],
-    
-    restoredMapData: null,
-
     globalHistory: [],
-    hasNewReport: false,
+    
+    stats: null,
+    restoredMapData: null,
+    mobileMenuOpen: null,
 
+    hasNewReport: false,
     showTutorial: false,
 
-    runTrigger: 0, clearPathTrigger: 0, clearBoardTrigger: 0,
-    stepForwardTrigger: 0, stepBackwardTrigger: 0, stopTrigger: 0,
+    runTrigger: 0, 
+    clearPathTrigger: 0, 
+    clearBoardTrigger: 0,
+    stepForwardTrigger: 0, 
+    stepBackwardTrigger: 0, 
+    stopTrigger: 0,
 
     setAlgorithm: (val) => set({ algorithm: val }),
     setDrawMode: (val) => set({ drawMode: val }),
@@ -107,12 +115,16 @@ export const useSimulationStore = create<SimulationState>((set) => ({
     setSimSpeed: (val) => set({ simSpeed: val }),
     setPlaybackStatus: (val) => set({ playbackStatus: val }),
     setLiveText: (val) => set({ liveText: val }),
+    
+    setShowTutorial: (show) => set({ showTutorial: show }),
 
     setStats: (stats) => set({ stats }),
     setHasNewReport: (val) => set({ hasNewReport: val }),
+    setMobileMenuOpen: (val) => set({ mobileMenuOpen: val }),
     
     setRestoredMapData: (data) => set({ restoredMapData: data }),
     setHistory: (history) => set({ history }),
+    setGlobalHistory: (val) => set({ globalHistory: val }),
     
     addHistory: (record) => set((state) => {
         // 1. PENGECEKAN KONSISTENSI MAP (Auto-Archive)
@@ -146,11 +158,9 @@ export const useSimulationStore = create<SimulationState>((set) => ({
         return { history: [...state.history, record] };
     }),
     
-    setGlobalHistory: (val) => set({ globalHistory: val }),
     addGlobalHistory: (record) => set((state) => ({ globalHistory: [record, ...state.globalHistory] })),
+    
     clearGlobalHistory: () => set({ globalHistory: [] }),
-
-    setShowTutorial: (show) => set({ showTutorial: show }),
     clearHistory: () => set({ history: [], stats: null }),
 
     executeRun: () => set((s) => ({ runTrigger: s.runTrigger + 1, playbackStatus: 'playing' })),
