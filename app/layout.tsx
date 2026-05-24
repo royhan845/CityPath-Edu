@@ -14,7 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a", 
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, 
 };
 
 export const metadata: Metadata = {
@@ -22,6 +26,14 @@ export const metadata: Metadata = {
   title: "CityPath Edu | Visualisasi Algoritma 3D",
   description: "Belajar algoritma pathfinding seperti Dijkstra, A*, dan BFS secara interaktif dengan membangun kota 3D. Simulator edukasi yang menyenangkan!",
   
+  manifest: "/manifest.json", 
+  
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "CityPath Edu",
+  },
+
   icons: [
     {
       media: "(prefers-color-scheme: dark)",
