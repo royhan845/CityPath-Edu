@@ -32,7 +32,12 @@ export default function GridTiles({
     const tempObject = useMemo(() => new THREE.Object3D(), []);
     const tempColor = useMemo(() => new THREE.Color(), []);
 
-    // 1. SET MATRIKS POSISI AWAL (Hanya jalan 1x saat mount)
+    const cachedGeometry = useMemo(() => new THREE.BoxGeometry(0.9, GRID_HEIGHT, 0.9), []);
+    const cachedMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+        roughness: 0.8,
+        metalness: 0.2
+    }), []);
+
     useEffect(() => {
         if (!meshRef.current) return;
         let i = 0;
@@ -48,7 +53,6 @@ export default function GridTiles({
         meshRef.current.computeBoundingBox();
     }, [tempObject]);
 
-    // 2. UPDATE WARNA GRID BERDASARKAN STATE
     useEffect(() => {
         if (!meshRef.current) return;
         let hoverFootprint: number[] = [];
@@ -108,13 +112,11 @@ export default function GridTiles({
     return (
         <instancedMesh 
             ref={meshRef} 
-            args={[null!, null!, GRID_SIZE * GRID_SIZE]} 
+            args={[cachedGeometry, cachedMaterial, GRID_SIZE * GRID_SIZE]} 
             onPointerDown={onPointerDown} 
             onPointerMove={(e) => { e.stopPropagation(); if (e.instanceId !== undefined) onPointerMove(e.instanceId); }} 
             onPointerOut={onPointerOut}
         >
-            <boxGeometry args={[0.9, GRID_HEIGHT, 0.9]} />
-            <meshStandardMaterial />
         </instancedMesh>
     );
 }

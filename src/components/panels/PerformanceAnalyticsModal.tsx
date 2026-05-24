@@ -210,43 +210,51 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
 
                                     {/* Tabel Riwayat Sesi Aktif */}
                                     <div className="border border-slate-800/80 rounded-2xl overflow-hidden bg-[#050816]/50">
-                                        <div className="bg-[#0B1120] py-3 px-4 border-b border-slate-800/80 grid grid-cols-12 gap-2 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                                            <div className="col-span-4">Algoritma</div>
-                                            <div className="col-span-2 text-right">Cek Blok</div>
-                                            <div className="col-span-2 text-right">Jarak Rute</div>
-                                            <div className="col-span-3 text-right">Waktu (ms)</div>
-                                            <div className="col-span-1 text-center">Aksi</div>
-                                        </div>
-                                        <div className="p-2 space-y-1">
-                                            {history.map((record, idx) => (
-                                                <div key={idx} className={`grid grid-cols-12 gap-2 items-center px-2 py-2 rounded-xl text-xs font-mono ${idx === history.length - 1 ? 'bg-slate-800/50 border border-slate-700/50' : 'hover:bg-slate-800/30'}`}>
-                                                    <div className="col-span-4 flex items-center gap-2">
-                                                        <Cpu size={12} className={algorithmDetails[record.algo]?.color || "text-slate-400"} />
-                                                        <span className={`font-bold uppercase ${algorithmDetails[record.algo]?.color || "text-slate-200"}`}>{algorithmDetails[record.algo]?.title || record.algo}</span>
-                                                    </div>
-                                                    <div className="col-span-2 text-right text-cyan-400 font-bold">{record.visited}</div>
-                                                    <div className="col-span-2 text-right text-emerald-400 font-bold">{record.path}</div>
-                                                    <div className="col-span-3 text-right text-amber-400 font-bold">{record.time < 0.01 ? '< 0.01' : record.time.toFixed(2)}</div>
-                                                    
-                                                    <div className="col-span-1 flex justify-center">
-                                                        <button 
-                                                            onClick={() => {
-                                                                setAlgorithm(record.algo); 
-                                                                if (record.mapData) {
-                                                                    setRestoredMapData(record.mapData);
-                                                                }
-                                                                executeClearPath();        
-                                                                onClose();                 
-                                                                setTimeout(() => { executeRun(); }, 350); 
-                                                            }}
-                                                            className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/30 text-cyan-400 rounded transition-colors"
-                                                            title="Jalankan Ulang Algoritma Ini"
-                                                        >
-                                                            <Play size={10} fill="currentColor" />
-                                                        </button>
-                                                    </div>
+                                        <div className="overflow-x-auto custom-scrollbar">
+                                            <div className="min-w-[500px]">
+                                                
+                                                {/* Header Tabel */}
+                                                <div className="bg-[#0B1120] py-3 px-4 border-b border-slate-800/80 grid grid-cols-12 gap-2 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                                    <div className="col-span-4">Algoritma</div>
+                                                    <div className="col-span-2 text-right">Cek Blok</div>
+                                                    <div className="col-span-2 text-right">Jarak Rute</div>
+                                                    <div className="col-span-3 text-right">Waktu (ms)</div>
+                                                    <div className="col-span-1 text-center">Aksi</div>
                                                 </div>
-                                            ))}
+                                                
+                                                {/* Isi Tabel */}
+                                                <div className="p-2 space-y-1">
+                                                    {history.map((record, idx) => (
+                                                        <div key={idx} className={`grid grid-cols-12 gap-2 items-center px-2 py-2 rounded-xl text-xs font-mono ${idx === history.length - 1 ? 'bg-slate-800/50 border border-slate-700/50' : 'hover:bg-slate-800/30'}`}>
+                                                            <div className="col-span-4 flex items-center gap-2">
+                                                                <Cpu size={12} className={algorithmDetails[record.algo]?.color || "text-slate-400"} />
+                                                                <span className={`font-bold uppercase ${algorithmDetails[record.algo]?.color || "text-slate-200"}`}>{algorithmDetails[record.algo]?.title || record.algo}</span>
+                                                            </div>
+                                                            <div className="col-span-2 text-right text-cyan-400 font-bold">{record.visited}</div>
+                                                            <div className="col-span-2 text-right text-emerald-400 font-bold">{record.path}</div>
+                                                            <div className="col-span-3 text-right text-amber-400 font-bold">{record.time < 0.01 ? '< 0.01' : record.time.toFixed(2)}</div>
+                                                            
+                                                            <div className="col-span-1 flex justify-center">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setAlgorithm(record.algo); 
+                                                                        if (record.mapData) {
+                                                                            setRestoredMapData(record.mapData);
+                                                                        }
+                                                                        executeClearPath();        
+                                                                        onClose();                 
+                                                                        setTimeout(() => { executeRun(); }, 350); 
+                                                                    }}
+                                                                    className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/30 text-cyan-400 rounded transition-colors"
+                                                                    title="Jalankan Ulang Algoritma Ini"
+                                                                >
+                                                                    <Play size={10} fill="currentColor" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </>

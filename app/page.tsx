@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { Cpu, Route, Network, Scan, Map, Car, Bot, Gamepad2, TerminalSquare, Activity, ChevronRight } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Cpu, Route, Network, Scan, Map, Car, Bot, Gamepad2, TerminalSquare, Activity, ChevronRight, Menu, X, Camera, Hand } from "lucide-react"
+
+import { useSimulationStore } from "../src/stores/useSimulationStore";
 import Scene from "../src/components/scene/Scene" 
 import TerminalBoot from "../src/components/ui/TerminalBoot"
 import MiniLiveVisualization from "../src/components/panels/MiniLiveVisualization"
@@ -44,9 +46,11 @@ const FadeUp = ({ children, delay = 0, className = "" }: { children: React.React
 );
 
 export default function Home() {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isSimulating, setIsSimulating] = useState(false);
     const [isBooting, setIsBooting] = useState(false);
     const [sceneMode, setSceneMode] = useState<'tutorial' | 'report'>('tutorial');
+    const { interactionMode, setInteractionMode } = useSimulationStore();
 
     useEffect(() => {
         if (isSimulating || isBooting) document.body.style.overflow = 'hidden';
@@ -63,6 +67,22 @@ export default function Home() {
     if (isSimulating) {
         return (
             <div className="fixed inset-0 w-full h-[100dvh] animate-in zoom-in-95 fade-in duration-700 bg-[#060816] z-50">
+
+                {/* Tombol Toggle Mode Interaksi (HANYA DI MOBILE) */}
+                <div className="md:hidden absolute top-6 left-4 z-[100] flex bg-[#0B1120]/80 backdrop-blur-md rounded-xl border border-slate-700/60 shadow-lg p-1">
+                    <button
+                        onClick={() => setInteractionMode('camera')}
+                        className={`p-2 rounded-lg transition-all ${interactionMode === 'camera' ? 'bg-cyan-500 text-[#060816]' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        <Camera size={16} />
+                    </button>
+                    <button
+                        onClick={() => setInteractionMode('draw')}
+                        className={`p-2 rounded-lg transition-all ${interactionMode === 'draw' ? 'bg-emerald-500 text-[#060816]' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        <Hand size={16} />
+                    </button>
+                </div>
                 
                 {/* 1. Sembunyikan badge di HP (tambah hidden md:flex) */}
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none hidden md:flex flex-col items-center">
@@ -102,19 +122,52 @@ export default function Home() {
             </div>
 
             {/* Header */}
-            <header className="fixed top-0 z-[100] w-full glass-panel !border-x-0 !border-t-0 py-4 px-6 lg:px-10 flex justify-between items-center transition-all">
-                <div className="font-black text-xl text-slate-100 flex items-center gap-3 tracking-tighter">
-                    <img src="/images/icon-dark.svg" alt="Icon" className="w-5 h-5 brightness-0 invert opacity-90 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-                    <div className="drop-shadow-md">CityPath<span className="text-slate-500 font-medium">Edu</span></div>
+            <header className="fixed top-0 z-[100] w-full glass-panel !border-x-0 !border-t-0 py-4 px-6 lg:px-10 transition-all">
+                <div className="flex justify-between items-center w-full">
+                    {/* Logo */}
+                    <div className="font-black text-xl text-slate-100 flex items-center gap-3 tracking-tighter">
+                        <img src="/images/icon-dark.svg" alt="Icon" className="w-5 h-5 brightness-0 invert opacity-90 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                        <div className="drop-shadow-md">CityPath<span className="text-slate-500 font-medium">Edu</span></div>
+                    </div>
+
+                    {/* Desktop Nav */}
+                    <nav className="hidden md:flex gap-12 font-mono text-[10px] uppercase tracking-widest text-slate-400">
+                        <a href="#how-it-works" className="hover:text-cyan-400 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] transition-all flex items-center gap-1.5"><Cpu size={12} /> Matrix</a>
+                        <a href="#algorithms" className="hover:text-cyan-400 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] transition-all flex items-center gap-1.5"><Network size={12} /> Engines</a>
+                        <a href="#benefits" className="hover:text-cyan-400 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] transition-all flex items-center gap-1.5"><Map size={12} /> Context</a>
+                    </nav>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => handleLaunch('tutorial')} className="text-cyan-400 hover:text-white border border-cyan-400/30 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(34,211,238,0.2)] bg-cyan-400/5 hover:bg-cyan-400/20 px-4 md:px-6 py-2 rounded-[3px] font-mono text-[10px] uppercase tracking-widest transition-all active:scale-95">
+                            Init<span className="hidden md:inline">ialize System</span>
+                        </button>
+
+                        {/* Mobile Menu Toggle */}
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className="md:hidden p-2 text-cyan-400 border border-cyan-400/30 rounded bg-cyan-400/5 transition-all"
+                        >
+                            {isMobileMenuOpen ? <X size={14} /> : <Menu size={14} />}
+                        </button>
+                    </div>
                 </div>
-                <nav className="hidden md:flex gap-12 font-mono text-[10px] uppercase tracking-widest text-slate-400">
-                    <a href="#how-it-works" className="hover:text-cyan-400 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] transition-all flex items-center gap-1.5"><Cpu size={12} /> Matrix</a>
-                    <a href="#algorithms" className="hover:text-cyan-400 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] transition-all flex items-center gap-1.5"><Network size={12} /> Engines</a>
-                    <a href="#benefits" className="hover:text-cyan-400 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] transition-all flex items-center gap-1.5"><Map size={12} /> Context</a>
-                </nav>
-                <button onClick={() => handleLaunch('tutorial')} className="text-cyan-400 hover:text-white border border-cyan-400/30 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(34,211,238,0.2)] bg-cyan-400/5 hover:bg-cyan-400/20 px-6 py-2 rounded-[3px] font-mono text-[10px] uppercase tracking-widest transition-all active:scale-95">
-                    Initialize System
-                </button>
+
+                {/* Mobile Dropdown Nav */}
+                <AnimatePresence>
+                    {isMobileMenuOpen && (
+                        <motion.nav
+                            initial={{ opacity: 0, height: 0, marginTop: 0 }} 
+                            animate={{ opacity: 1, height: 'auto', marginTop: 16 }} 
+                            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                            className="md:hidden flex flex-col gap-5 font-mono text-[10px] uppercase tracking-widest text-slate-300 border-t border-slate-700/50 pt-5 pb-2 overflow-hidden"
+                        >
+                            <a href="#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-cyan-400 transition-all flex items-center gap-3"><Cpu size={14} className="text-cyan-400" /> Matrix Configuration</a>
+                            <a href="#algorithms" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-cyan-400 transition-all flex items-center gap-3"><Network size={14} className="text-cyan-400" /> Analytical Engines</a>
+                            <a href="#benefits" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-cyan-400 transition-all flex items-center gap-3"><Map size={14} className="text-cyan-400" /> System Context</a>
+                        </motion.nav>
+                    )}
+                </AnimatePresence>
             </header>
 
             {/* Hero Section */}
@@ -125,7 +178,7 @@ export default function Home() {
                             <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_5px_#22D3EE]"></span> 
                             [ SYS_ACTIVE ] Hexagonal Navigation Grid
                         </div>
-                        <h1 className="text-5xl lg:text-7xl font-bold leading-[1.05] text-slate-100 tracking-tight max-w-3xl mx-auto lg:mx-0 drop-shadow-lg">
+                        <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-[1.05] text-slate-100 tracking-tight max-w-3xl mx-auto lg:mx-0 drop-shadow-lg">
                             Visualizing <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-[#38BDF8] drop-shadow-[0_0_20px_rgba(34,211,238,0.3)]">Pathfinding Intelligence</span> <br />
                             In Real Time.
@@ -142,17 +195,19 @@ export default function Home() {
                     </FadeUp>
 
                     <FadeUp delay={0.2} className="flex-1 w-full aspect-square max-w-[550px] relative flex items-center justify-center">
+                        {/* Panel Kiri */}
                         <motion.div 
                             animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute top-10 -left-6 z-20 glass-panel px-4 py-3 rounded-[4px] font-mono text-[8px] tracking-widest text-cyan-400 uppercase leading-relaxed"
+                            className="hidden md:block absolute top-10 -left-6 z-20 glass-panel px-4 py-3 rounded-[4px] font-mono text-[8px] tracking-widest text-cyan-400 uppercase leading-relaxed"
                         >
                             SERVER NODE: <span className="text-slate-300">BYM-ID</span><br/>
                             CPU LOAD: <span className="text-slate-300">12.4%</span><br/>
                             VRAM ALLOC: <span className="text-slate-300">1.2 GB</span>
                         </motion.div>
+                        {/* Panel Kanan */}
                         <motion.div 
                             animate={{ y: [0, 10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute bottom-16 -right-6 z-20 glass-panel px-4 py-3 rounded-[4px] font-mono text-[8px] tracking-widest text-emerald-400 uppercase leading-relaxed text-right"
+                            className="hidden md:block absolute bottom-16 -right-6 z-20 glass-panel px-4 py-3 rounded-[4px] font-mono text-[8px] tracking-widest text-emerald-400 uppercase leading-relaxed text-right"
                         >
                             HEURISTIC: <span className="text-slate-300">SYNCED</span><br/>
                             MESH STATE: <span className="text-slate-300">VALID</span><br/>
@@ -170,7 +225,7 @@ export default function Home() {
             </main>
 
             {/* Pipeline Section */}
-            <section id="how-it-works" className="snap-start min-h-[100dvh] flex flex-col justify-center py-20 px-6 w-full relative z-10 border-y border-white/[0.02]">
+            <section id="how-it-works" className="snap-start min-h-[100dvh] flex flex-col justify-center py-12 md:py-20 px-6 w-full relative z-10 border-y border-white/[0.02]">
                 <div className="max-w-7xl mx-auto w-full">
                     <FadeUp className="text-center mb-16">
                         <div className="font-mono text-[10px] tracking-widest uppercase text-[#38BDF8] mb-4">[ MODULE_02 ] Simulation Pipeline</div>
@@ -198,7 +253,7 @@ export default function Home() {
             </section>
 
             {/* Algorithms Section */}
-            <section id="algorithms" className="snap-start min-h-[100dvh] flex flex-col justify-center py-16 px-6 max-w-7xl mx-auto w-full relative z-10">
+            <section id="algorithms" className="snap-start min-h-[100dvh] flex flex-col justify-center py-12 md:py-16 px-6 max-w-7xl mx-auto w-full relative z-10">
                 <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
                     <FadeUp className="flex-1 w-full">
                         <div className="font-mono text-[10px] tracking-widest uppercase text-[#38BDF8] mb-4">[ MODULE_03 ] Analytical Engine</div>
@@ -245,7 +300,7 @@ export default function Home() {
             </section>
 
             {/* Context Section */}
-            <section id="benefits" className="snap-start min-h-[100dvh] flex flex-col justify-center py-20 px-6 border-y border-white/[0.02] bg-[#0F172A]/20 w-full relative z-10 overflow-hidden">
+            <section id="benefits" className="snap-start min-h-[100dvh] flex flex-col justify-center py-12 md:py-20 px-6 border-y border-white/[0.02] bg-[#0F172A]/20 w-full relative z-10 overflow-hidden">
                 <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-cyan-400/5 blur-[150px] rounded-full pointer-events-none -translate-x-1/2 translate-y-1/2"></div>
                 <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center w-full z-10 relative">
                     <FadeUp>
@@ -321,7 +376,7 @@ export default function Home() {
                     </div>
                 </div>
                 <div className="max-w-7xl mx-auto w-full mt-24 pt-6 border-t border-white/5 text-[9px] text-slate-600 font-mono tracking-widest flex flex-col md:flex-row justify-between items-center gap-4">
-                    <span>© {new Date().getFullYear()} ROYHAN FIRDAUS.</span>
+                    <span>© {new Date().getFullYear()} ROYHAN FIRDAUS - 23SA11A163.</span>
                     <span className="text-slate-700">UNIVERSITAS AMIKOM PURWOKERTO.</span>
                 </div>
             </footer>

@@ -14,47 +14,33 @@ export function useGridInteraction(
     isAnimating: boolean,
     onGridModified: () => void
 ) {
-    const { drawMode, setDrawMode, rotationStep } = useSimulationStore();
-    
-    // Simpan nilai rotasi sebelumnya untuk mendeteksi perubahan tombol 'R'
+    const { drawMode, setDrawMode, rotationStep, interactionMode } = useSimulationStore();
     const prevRotRef = useRef(rotationStep);
 
-    // ========================================================
-    // EFFECT: LOGIKA ROTASI LANGSUNG SAAT TEKAN 'R'
-    // ========================================================
     useEffect(() => {
-        // Jangan muter kalau sedang animasi, drawMode bukan select, atau tidak ada yang dipilih
         if (selectedNodeId === null || isAnimating || drawMode !== "select") return;
 
-        // Detect jika tombol 'R' ditekan (rotationStep berubah)
         if (rotationStep !== prevRotRef.current) {
             const nodeVal = nodes[selectedNodeId];
 
-            // 1. JIKA YANG DIPILIH ADALAH KARAKTER (ID 1 atau 2)
             if (nodeVal === 1 || nodeVal === 2) {
-                // UPDATE ROTASI LANGSUNG DI SINI! (Tanpa nunggu klik)
                 setNodeRotations((prev: Record<number, number>) => ({ 
                     ...prev, 
                     [selectedNodeId]: rotationStep 
                 }));
-                // Flag modified biar path reset
                 onGridModified();
             } 
-            // 2. JIKA YANG DIPILIH ADALAH GEDUNG (>= 7)
             else if (nodeVal >= 7) {
-                // Tidak ada update langsung di sini, biar GhostPreview (bayangan)
-                // yang handle rotasi visual sampai user nge-klik konfirmasi.
             }
         }
         prevRotRef.current = rotationStep;
     }, [rotationStep, selectedNodeId, isAnimating, nodes, drawMode, setNodeRotations, onGridModified]);
 
-
-    // ========================================================
-    // LOGIKA KLIK & PENEMPATAN (handlePointerDown)
-    // ========================================================
     const handlePointerDown = (e: any) => {
         if (isAnimating) return;
+        if (e.pointerType === 'touch' && interactionMode === 'camera') {
+            return; 
+        }
         e.stopPropagation();
         try { if (e.target && e.pointerId !== undefined) e.target.releasePointerCapture(e.pointerId); } catch (err) {}
 
@@ -71,26 +57,22 @@ export function useGridInteraction(
             if (selectedNodeId !== null) {
                 const nodeVal = newNodes[selectedNodeId];
                 
-                // JIKA SEDANG MEMILIH KARAKTER (Klik ID lain untuk pindah, klik ID sama untuk tutup seleksi)
                 if (nodeVal === 1 || nodeVal === 2) {
                     if (id === selectedNodeId) {
-                        newSelectedId = null; // Tutup seleksi
+                        newSelectedId = null;
                     } else if (isNodeEmpty(newNodes[id])) {
-                        // PINDAH LOKASI KARAKTER (Bawa rotasi terakhir)
                         newNodes[selectedNodeId] = 0;
                         delete newRotations[selectedNodeId];
                         newNodes[id] = nodeVal;
-                        newRotations[id] = nodeRotations[selectedNodeId]; // Pakai rotasi terakhir yang diset 'R'
+                        newRotations[id] = nodeRotations[selectedNodeId];
                         newSelectedId = id;
                         isStateChanged = true; isRotationsChanged = true;
                     } else {
-                        // PILIH OBJEK LAIN
                         const pAnchor = getAnchorFromId(id, newNodes, nodeRotations, GRID_SIZE);
                         if (pAnchor !== -1) newSelectedId = pAnchor;
                         else if (newNodes[id] === 1 || newNodes[id] === 2) newSelectedId = id;
                     }
                 } 
-                // JIKA SEDANG MEMILIH GEDUNG (Rotasi via GhostPreview)
                 else {
                     const bldId = newNodes[selectedNodeId];
                     const bld = Object.values(BUILDINGS).find(b => b.id === bldId);
@@ -99,31 +81,27 @@ export function useGridInteraction(
                         const currentFp = getDynamicFootprint(selectedNodeId, GRID_SIZE, bld.sizeX, bld.sizeZ, currentRot);
                         
                         if (currentFp.includes(id)) {
-                            // KLIK GEDUNG SENDIRI -> KONFIRMASI ROTASI DARI GHOST
                             const newFp = getDynamicFootprint(selectedNodeId, GRID_SIZE, bld.sizeX, bld.sizeZ, rotationStep);
                             
-                            // Hapus tapak lama sementara untuk cek tabrakan
                             currentFp.forEach(idx => newNodes[idx] = 0);
                             const isAreaClear = newFp.length === (bld.sizeX * bld.sizeZ) && newFp.every(idx => isNodeEmpty(newNodes[idx]));
                             
                             if (isAreaClear) {
                                 newFp.forEach(idx => newNodes[idx] = 3);
                                 newNodes[selectedNodeId] = bld.id;
-                                newRotations[selectedNodeId] = rotationStep; // Terapkan rotasi ghost ke asli
+                                newRotations[selectedNodeId] = rotationStep;
                                 isStateChanged = true; isRotationsChanged = true;
                             } else {
-                                // Batal muter (mentok)
                                 currentFp.forEach(idx => newNodes[idx] = 3);
                                 newNodes[selectedNodeId] = bld.id;
                             }
-                            newSelectedId = null; // Tutup seleksi setelah konfirmasi
+                            newSelectedId = null;
                         } else if ((newNodes[id] >= 7 || newNodes[id] === 3 || newNodes[id] === 1 || newNodes[id] === 2) && !currentFp.includes(id)) {
                             // PILIH OBJEK LAIN
                             const pAnchor = getAnchorFromId(id, newNodes, nodeRotations, GRID_SIZE);
                             if (pAnchor !== -1) newSelectedId = pAnchor;
                             else if (newNodes[id] === 1 || newNodes[id] === 2) newSelectedId = id; 
                         } else {
-                            // KLIK KOSONG -> PINDAH GEDUNG (Pakai rotasi terakhir yang diset ghost)
                             currentFp.forEach(idx => newNodes[idx] = 0); 
                             const newFp = getDynamicFootprint(id, GRID_SIZE, bld.sizeX, bld.sizeZ, rotationStep);
                             const isAreaClear = newFp.length === (bld.sizeX * bld.sizeZ) && newFp.every(idx => isNodeEmpty(newNodes[idx]));
@@ -132,7 +110,7 @@ export function useGridInteraction(
                                 newFp.forEach(idx => newNodes[idx] = 3);
                                 newNodes[id] = bld.id; 
                                 delete newRotations[selectedNodeId];
-                                newRotations[id] = rotationStep; // Pakai rotasi ghost
+                                newRotations[id] = rotationStep;
                                 newSelectedId = id; 
                                 isStateChanged = true; isRotationsChanged = true;
                             } else {
@@ -144,13 +122,11 @@ export function useGridInteraction(
                     }
                 }
             } else {
-                // KLIK PERTAMA KALI UNTUK MEMILIH
                 const pAnchor = getAnchorFromId(id, newNodes, nodeRotations, GRID_SIZE);
                 if (pAnchor !== -1) newSelectedId = pAnchor;
                 else if (newNodes[id] === 1 || newNodes[id] === 2) newSelectedId = id; 
             }
         } 
-        // ... (sisanya sama untuk mode delete dan menaruh objek baru) ...
         else if (drawMode === "delete") {
             const anchorId = getAnchorFromId(id, newNodes, nodeRotations, GRID_SIZE);
             if (anchorId !== -1) {

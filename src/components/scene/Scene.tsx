@@ -51,14 +51,11 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
         if (initialMode === 'report') {
             setShowReportModal(true);
         } else if (initialMode === 'tutorial') {
-            // Cek apakah user sudah pernah melihat tutorial sebelumnya
             const hasSeenTutorial = localStorage.getItem('citypath_has_seen_tutorial');
             
-            // Jika belum pernah melihat (user baru), munculkan popup
             if (!hasSeenTutorial) {
                 const timer = setTimeout(() => {
                     setShowTutorialModal(true);
-                    // Langsung catat ke memori agar besok-besok tidak muncul lagi
                     localStorage.setItem('citypath_has_seen_tutorial', 'true');
                 }, 800);
                 return () => clearTimeout(timer);
@@ -84,7 +81,6 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
 
         setStats({ visited, path, time });
         
-        // Simpan mapData ke dalam riwayat!
         addHistory({ algo: currentAlgo, visited, path, time, mapData: currentGridData }); 
         
         useSimulationStore.getState().setHasNewReport(true);
@@ -103,7 +99,7 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
             <EditorPanel isMobile={isMobile} onShowTutorial={() => setShowTutorialModal(true)} />
             
             <MetricsPanel isMobile={isMobile} onOpenReport={() => setShowReportModal(true)} />
-            
+           
             <PlaybackControls />
 
             {showTutorialModal && (
@@ -114,7 +110,13 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
                 <PerformanceAnalyticsModal onClose={() => setShowReportModal(false)} />
             )}
 
-            <Canvas dpr={[1, 1.5]} camera={{ position: isMobile ? [0, 15, 30] : [0, 18, 25], fov: isMobile ? 55 : 30 }}>
+            <Canvas 
+                dpr={isMobile ? 1 : [1, 2]} 
+                camera={{ 
+                    position: isMobile ? [9, 12, 14] : [8, 9, 12], 
+                    fov: isMobile ? 55 : 45
+                }}
+            >
                 <Lighting />
                 <CameraController isMobile={isMobile} />
                 <Environment />

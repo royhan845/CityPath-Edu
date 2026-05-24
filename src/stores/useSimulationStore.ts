@@ -47,6 +47,7 @@ interface SimulationState {
     stopTrigger: number;
 
     mobileMenuOpen: 'editor' | 'metrics' | null;
+    interactionMode: 'camera' | 'draw';
 
     setAlgorithm: (val: string) => void;
     setDrawMode: (val: string) => void;
@@ -63,13 +64,15 @@ interface SimulationState {
     addHistory: (record: HistoryRecord) => void;
     addGlobalHistory: (record: GlobalLogGroup) => void;
 
-    clearGlobalHistory: () => void;
-    clearHistory: () => void;
-
     setShowTutorial: (show: boolean) => void;
     setHasNewReport: (val: boolean) => void;
     setRestoredMapData: (data: any) => void;
+
     setMobileMenuOpen: (menu: 'editor' | 'metrics' | null) => void;
+    setInteractionMode: (mode: 'camera' | 'draw') => void;
+
+    clearGlobalHistory: () => void;
+    clearHistory: () => void;
 
     executeRun: () => void;
     executeSkip: () => void;
@@ -108,6 +111,8 @@ export const useSimulationStore = create<SimulationState>((set) => ({
     stepBackwardTrigger: 0, 
     stopTrigger: 0,
 
+    interactionMode: 'camera',
+
     setAlgorithm: (val) => set({ algorithm: val }),
     setDrawMode: (val) => set({ drawMode: val }),
     setRotationStep: (val) => set((state) => ({ rotationStep: typeof val === 'function' ? val(state.rotationStep) : val })),
@@ -125,6 +130,8 @@ export const useSimulationStore = create<SimulationState>((set) => ({
     setRestoredMapData: (data) => set({ restoredMapData: data }),
     setHistory: (history) => set({ history }),
     setGlobalHistory: (val) => set({ globalHistory: val }),
+
+    setInteractionMode: (val) => set({ interactionMode: val }),
     
     addHistory: (record) => set((state) => {
         // 1. PENGECEKAN KONSISTENSI MAP (Auto-Archive)
