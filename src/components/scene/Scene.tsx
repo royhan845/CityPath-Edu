@@ -9,6 +9,7 @@ import EditorPanel from "../panels/EditorPanel"
 import MetricsPanel from "../panels/MetricsPanel"
 import PerformanceAnalyticsModal from "../panels/PerformanceAnalyticsModal"
 import TutorialModal from "../panels/TutorialModal"
+import LegendPanel from "../panels/LegendPanel"
 
 // Import Scene Components
 import Lighting from "./Lighting"
@@ -40,12 +41,6 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
         window.addEventListener("resize", handleResize); 
         return () => window.removeEventListener("resize", handleResize);
     }, []);
-
-    useEffect(() => {
-        if (initialMode === 'report') {
-            setShowReportModal(true);
-        }
-    }, [initialMode]);
 
     useEffect(() => {
         if (initialMode === 'report') {
@@ -99,6 +94,8 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
             <EditorPanel isMobile={isMobile} onShowTutorial={() => setShowTutorialModal(true)} />
             
             <MetricsPanel isMobile={isMobile} onOpenReport={() => setShowReportModal(true)} />
+
+            <LegendPanel isMobile={isMobile} />
            
             <PlaybackControls />
 
@@ -111,6 +108,7 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
             )}
 
             <Canvas 
+                shadows
                 dpr={isMobile ? 1 : [1, 2]} 
                 camera={{ 
                     position: isMobile ? [9, 12, 14] : [8, 9, 12], 

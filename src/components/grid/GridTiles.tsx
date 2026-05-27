@@ -113,6 +113,7 @@ export default function GridTiles({
         <instancedMesh 
             ref={meshRef} 
             args={[cachedGeometry, cachedMaterial, GRID_SIZE * GRID_SIZE]} 
+            receiveShadow
             onPointerDown={onPointerDown} 
             onPointerMove={(e) => { e.stopPropagation(); if (e.instanceId !== undefined) onPointerMove(e.instanceId); }} 
             onPointerOut={onPointerOut}

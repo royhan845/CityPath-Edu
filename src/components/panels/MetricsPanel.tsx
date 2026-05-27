@@ -19,15 +19,14 @@ export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boo
 
     return (
         <>
-            {/* 1. Tombol hanya muncul jika TIDAK ADA menu yang sedang terbuka */}
             {isMobile && mobileMenuOpen === null && (
                 <button 
                     onClick={() => setMobileMenuOpen('metrics')}
-                    disabled={playbackStatus !== 'idle'} // 2. Disable saat simulasi jalan
+                    disabled={playbackStatus !== 'idle'} 
                     className={`absolute ${playbackStatus === 'idle' ? 'bottom-[230px]' : 'bottom-[160px]'} right-4 z-50 p-3 rounded-xl shadow-lg transition-all duration-500 flex items-center gap-2 border 
                     ${playbackStatus !== 'idle' 
-                        ? 'opacity-40 cursor-not-allowed grayscale bg-[#0B1120]/80 border-slate-700/60 text-slate-400' 
-                        : (hasNewReport ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 animate-pulse' : 'bg-[#0B1120]/80 backdrop-blur-md border-slate-700/60 text-slate-300')
+                        ? 'opacity-40 cursor-not-allowed grayscale bg-[#0f172a]/60 border-white/10 text-slate-400' 
+                        : (hasNewReport ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 animate-pulse' : 'bg-[#0f172a]/60 backdrop-blur-xl border-white/10 text-slate-300')
                     }`}
                 >
                     <span className="text-[10px] font-mono font-bold tracking-widest uppercase">Metrics</span>
@@ -41,26 +40,25 @@ export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boo
                 </button>
             )}
 
-            {/* Panel Utama */}
-            <div className={`absolute z-40 flex flex-col bg-[#0B1120]/90 backdrop-blur-2xl border-slate-700/60 shadow-[0_0_40px_rgba(0,0,0,0.8)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
+            {/* Main Panel Glassmorphism */}
+            <div className={`absolute z-40 flex flex-col bg-[#0f172a]/60 backdrop-blur-xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
                 ${isMobile 
                     ? `bottom-0 left-0 right-0 w-full rounded-t-3xl border-t h-[65vh] ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}` 
                     : 'top-6 bottom-24 right-6 w-80 rounded-3xl border'
                 }`}
             >
-                {/* 3. Tutup menu via state global */}
                 {isMobile && (
-                    <div className="flex justify-between items-center p-4 border-b border-slate-800/60 bg-[#0B1120]/50">
+                    <div className="flex justify-between items-center p-4 border-b border-white/10 bg-white/5">
                         <span className="font-bold text-slate-200 font-mono text-[10px] tracking-widest uppercase">Analytics Matrix</span>
-                        <button onClick={() => setMobileMenuOpen(null)} className="p-2 bg-rose-500/10 text-rose-400 rounded-lg border border-rose-500/30">
+                        <button onClick={() => setMobileMenuOpen(null)} className="p-2 bg-white/5 text-slate-400 hover:text-rose-400 rounded-xl border border-white/5 hover:border-rose-500/30">
                             <X size={18} />
                         </button>
                     </div>
                 )}
 
-                <div className="p-4 md:p-5 border-b border-slate-800/60 bg-[#0B1120]/50">
-                    <label className="text-[10px] text-slate-500 font-bold tracking-widest uppercase block mb-2">Pilih Algoritma</label>
-                    <select disabled={playbackStatus !== 'idle'} className="w-full bg-[#050816] text-sm font-medium text-white border border-slate-700/50 rounded-xl px-3 py-3 outline-none focus:border-cyan-500 transition-all cursor-pointer disabled:opacity-50" value={algorithm} onChange={(e) => { setAlgorithm(e.target.value); executeClearPath(); }}>
+                <div className="p-4 md:p-5 border-b border-white/10 bg-white/5">
+                    <label className="text-[10px] text-slate-400 font-bold tracking-widest uppercase block mb-2">Pilih Algoritma</label>
+                    <select disabled={playbackStatus !== 'idle'} className="w-full bg-[#0f172a]/80 text-sm font-medium text-white border border-white/10 rounded-xl px-3 py-3 outline-none focus:border-cyan-500 transition-all cursor-pointer disabled:opacity-50 appearance-none">
                         <option value="astar">A* (A-Star) Search</option>
                         <option value="greedy">Greedy Best-First</option>
                         <option value="dijkstra">Dijkstra's Algorithm</option>
@@ -72,24 +70,25 @@ export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boo
                 <div className="p-5 flex-1 overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <div className="flex items-start justify-between mb-3">
                         <h3 className={`text-lg font-bold ${algorithmDetails[algorithm].color}`}>{algorithmDetails[algorithm].title}</h3>
-                        <span className="text-[9px] px-2 py-1 bg-slate-800 rounded-md font-mono text-slate-400 border border-slate-700">{algorithmDetails[algorithm].tag}</span>
+                        <span className="text-[9px] px-2 py-1 bg-white/10 rounded-md font-mono text-slate-300 border border-white/10">{algorithmDetails[algorithm].tag}</span>
                     </div>
                     <p className="text-xs text-slate-400 leading-relaxed mb-5">{algorithmDetails[algorithm].desc}</p>
                     
                     <div className="grid grid-cols-2 gap-3 mb-6">
-                        <div className="bg-slate-900/50 border border-slate-800/80 p-3 rounded-xl"><span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Time Complexity</span><span className="text-sm font-mono text-white">{algorithmDetails[algorithm].time}</span></div>
-                        <div className="bg-slate-900/50 border border-slate-800/80 p-3 rounded-xl"><span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Space Complexity</span><span className="text-sm font-mono text-white">{algorithmDetails[algorithm].space}</span></div>
+                        {/* Sleek Data Cards */}
+                        <div className="bg-white/5 border border-white/10 p-3 rounded-xl"><span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Time Complexity</span><span className="text-sm font-mono text-white">{algorithmDetails[algorithm].time}</span></div>
+                        <div className="bg-white/5 border border-white/10 p-3 rounded-xl"><span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Space Complexity</span><span className="text-sm font-mono text-white">{algorithmDetails[algorithm].space}</span></div>
                     </div>
                     
-                    <div className="border-t border-slate-800/60 pt-5 mt-auto pb-6 md:pb-0">
-                        <label className="text-[10px] text-slate-500 font-bold tracking-widest uppercase block mb-3">Real-time Statistics</label>
+                    <div className="border-t border-white/10 pt-5 mt-auto pb-6 md:pb-0">
+                        <label className="text-[10px] text-slate-400 font-bold tracking-widest uppercase block mb-3">Real-time Statistics</label>
                         <div className="space-y-3 mb-4">
-                            <div className="flex justify-between items-center bg-[#050816] px-4 py-2.5 rounded-lg border border-slate-800/50"><span className="text-xs text-slate-400">Nodes Evaluated</span><span className="text-sm font-mono text-cyan-400 font-bold">{stats ? stats.visited : '-'}</span></div>
-                            <div className="flex justify-between items-center bg-[#050816] px-4 py-2.5 rounded-lg border border-slate-800/50"><span className="text-xs text-slate-400">Path Length</span><span className="text-sm font-mono text-emerald-400 font-bold">{stats ? stats.path : '-'}</span></div>
-                            <div className="flex justify-between items-center bg-[#050816] px-4 py-2.5 rounded-lg border border-slate-800/50"><span className="text-xs text-slate-400">Exec Time (ms)</span><span className="text-sm font-mono text-amber-400 font-bold">{stats ? (stats.time < 0.01 ? '< 0.01' : stats.time.toFixed(2)) : '-'}</span></div>
+                            {/* Sleek Real-time Stats */}
+                            <div className="flex justify-between items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/10"><span className="text-xs text-slate-400">Nodes Evaluated</span><span className="text-sm font-mono text-cyan-400 font-bold">{stats ? stats.visited : '-'}</span></div>
+                            <div className="flex justify-between items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/10"><span className="text-xs text-slate-400">Path Length</span><span className="text-sm font-mono text-emerald-400 font-bold">{stats ? stats.path : '-'}</span></div>
+                            <div className="flex justify-between items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/10"><span className="text-xs text-slate-400">Exec Time (ms)</span><span className="text-sm font-mono text-amber-400 font-bold">{stats ? (stats.time < 0.01 ? '< 0.01' : stats.time.toFixed(2)) : '-'}</span></div>
                         </div>
                         
-                        {/* 2. Tombol dengan Indikator Notifikasi Merah */}
                         <button 
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -100,10 +99,9 @@ export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boo
                             className={`w-full py-3 pointer-events-auto relative z-50 cursor-pointer rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
                                 hasNewReport 
                                 ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)] animate-pulse' 
-                                : 'bg-slate-800/50 border-slate-700/50 text-slate-300 hover:bg-slate-800'
+                                : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
                             }`}
                         >
-                            {/* Dot Merah Berkedip */}
                             {hasNewReport && (
                                 <span className="relative flex h-2.5 w-2.5 mr-1">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>

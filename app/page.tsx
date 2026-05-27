@@ -23,11 +23,20 @@ const CustomStyles = () => (
             100% { transform: translateY(100vh); }
         }
         .animate-scanline { animation: scanline 8s linear infinite; }
+        
+        /* Glassmorphism yang lebih bersih ala UI modern */
         .glass-panel {
-            background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
-            backdrop-filter: blur(24px);
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: 0 0 30px rgba(34, 211, 238, 0.05), inset 0 1px 0 rgba(255,255,255,0.1);
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        
+        /* Hover glow effect tipis */
+        .glass-panel:hover {
+            border: 1px solid rgba(34, 211, 238, 0.2);
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.1), inset 0 1px 0 rgba(255,255,255,0.1);
         }
     `}} />
 );
@@ -174,23 +183,31 @@ export default function Home() {
             <main className="snap-start min-h-[100dvh] flex items-center justify-center relative pt-20 px-6 max-w-7xl mx-auto w-full z-10">
                 <div className="flex flex-col lg:flex-row items-center gap-16 w-full">
                     <FadeUp className="flex-1 space-y-7 text-center lg:text-left z-10">
-                        <div className="inline-flex items-center gap-2 font-mono text-[9px] tracking-widest uppercase text-slate-400 mb-2 border border-slate-800 bg-[#0F172A]/50 px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(0,0,0,0.5)]">
+                        <div className="inline-flex items-center gap-2 font-mono text-[9px] tracking-widest uppercase text-cyan-400 mb-2 border border-cyan-400/20 bg-cyan-400/5 px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(34,211,238,0.15)]">
                             <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_5px_#22D3EE]"></span> 
-                            [ SYS_ACTIVE ] Hexagonal Navigation Grid
+                            Interactive Educational Simulator
                         </div>
-                        <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-[1.05] text-slate-100 tracking-tight max-w-3xl mx-auto lg:mx-0 drop-shadow-lg">
-                            Visualizing <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-[#38BDF8] drop-shadow-[0_0_20px_rgba(34,211,238,0.3)]">Pathfinding Intelligence</span> <br />
-                            In Real Time.
+                        
+                        {/* Copywriting yang lebih menonjolkan nilai Edukasi */}
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] text-slate-100 tracking-tight max-w-3xl mx-auto lg:mx-0 drop-shadow-lg">
+                            Learn Pathfinding <br />
+                            Algorithms in <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-[#38BDF8] drop-shadow-[0_0_20px_rgba(34,211,238,0.3)]">Interactive 3D.</span>
                         </h1>
-                        <p className="text-sm text-slate-400 leading-relaxed max-w-lg mx-auto lg:mx-0 font-mono border-l border-cyan-400/30 pl-4 bg-gradient-to-r from-cyan-400/5 to-transparent py-2">
-                            Lingkungan simulasi generasi masa depan. Bangun matriks rintangan spasial dan amati bagaimana mesin komputasi mengevaluasi rute optimal.
+                        
+                        <p className="text-sm md:text-base text-slate-400 leading-relaxed max-w-lg mx-auto lg:mx-0 border-l-2 border-cyan-400/30 pl-4">
+                            Saksikan bagaimana mesin kecerdasan buatan mengevaluasi rute optimal. Bangun kota 3D-mu, letakkan rintangan, dan pahami logika di balik A*, Dijkstra, hingga BFS secara real-time.
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-6">
-                            <button onClick={() => handleLaunch('tutorial')} className="relative group bg-cyan-400 hover:bg-[#38BDF8] text-[#060816] font-bold px-8 py-3.5 rounded-[4px] transition-all active:scale-95 flex items-center justify-center gap-2 text-sm shadow-[0_0_25px_rgba(34,211,238,0.3)] hover:shadow-[0_0_35px_rgba(34,211,238,0.5)]">
-                                Enter Simulation <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                                <div className="absolute inset-0 border border-white/40 rounded-[4px] pointer-events-none group-hover:scale-105 transition-transform duration-300 opacity-0 group-hover:opacity-100"></div>
+                        
+                        {/* Tombol CTA Ganda (Primary & Secondary) */}
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
+                            <button onClick={() => handleLaunch('tutorial')} className="relative group bg-cyan-400 hover:bg-[#38BDF8] text-[#060816] font-bold px-8 py-3.5 rounded-full transition-all active:scale-95 flex items-center justify-center gap-2 text-sm shadow-[0_0_25px_rgba(34,211,238,0.3)] hover:shadow-[0_0_35px_rgba(34,211,238,0.5)]">
+                                Start Visualizing <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
                             </button>
+                            
+                            <a href="#algorithms" className="relative group glass-panel text-slate-300 hover:text-cyan-400 font-medium px-8 py-3.5 rounded-full transition-all active:scale-95 flex items-center justify-center gap-2 text-sm">
+                                Explore Algorithms
+                            </a>
                         </div>
                     </FadeUp>
 
