@@ -7,9 +7,12 @@ import { Canvas } from "@react-three/fiber"
 import PlaybackControls from "../panels/PlaybackControls"
 import EditorPanel from "../panels/EditorPanel"
 import MetricsPanel from "../panels/MetricsPanel"
-import PerformanceAnalyticsModal from "../panels/PerformanceAnalyticsModal"
-import TutorialModal from "../panels/TutorialModal"
 import LegendPanel from "../panels/LegendPanel"
+
+// Import UI Modals
+import PerformanceAnalyticsModal from "../modals/PerformanceAnalyticsModal"
+import TutorialModal from "../modals/TutorialModal"
+import LandscapeWarning from "../modals/LandscapeWarning"
 
 // Import Scene Components
 import Lighting from "./Lighting"
@@ -36,7 +39,7 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
     } = useSimulationStore();
 
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
         handleResize(); 
         window.addEventListener("resize", handleResize); 
         return () => window.removeEventListener("resize", handleResize);
@@ -96,6 +99,8 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
             <MetricsPanel isMobile={isMobile} onOpenReport={() => setShowReportModal(true)} />
 
             <LegendPanel isMobile={isMobile} />
+
+            <LandscapeWarning />
            
             <PlaybackControls />
 

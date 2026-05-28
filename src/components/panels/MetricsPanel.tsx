@@ -44,7 +44,7 @@ export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boo
             <div className={`absolute z-40 flex flex-col bg-[#0f172a]/60 backdrop-blur-xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
                 ${isMobile 
                     ? `bottom-0 left-0 right-0 w-full rounded-t-3xl border-t h-[65vh] ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}` 
-                    : 'top-6 bottom-24 right-6 w-80 rounded-3xl border'
+                    : 'top-6 bottom-24 right-4 md:w-[260px] lg:right-6 lg:w-80 rounded-3xl border'
                 }`}
             >
                 {isMobile && (

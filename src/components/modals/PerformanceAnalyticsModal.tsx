@@ -15,14 +15,11 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
     const [activeTab, setActiveTab] = useState<'current' | 'global'>('current');
     const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
     
-    // State untuk melacak apakah history saat ini sudah disimpan ke global
     const [isSessionSaved, setIsSessionSaved] = useState(false);
     
-    // State untuk Custom Save Dialog
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [saveName, setSaveName] = useState("");
 
-    // Pantau perubahan history: Jika ada data baru masuk, berarti sesi belum disimpan
     useEffect(() => {
         setIsSessionSaved(false);
     }, [history.length]);
@@ -35,14 +32,12 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
         dfs: { title: "Depth-First", color: "text-rose-400" }
     };
 
-    // Fungsi membuka dialog
     const handleOpenSaveDialog = () => {
         if (history.length === 0 || isSessionSaved) return;
         setSaveName(`Eksperimen ${new Date().toLocaleTimeString('id-ID')}`);
         setShowSaveDialog(true);
     };
 
-    // Fungsi eksekusi simpan
     const confirmSave = () => {
         if (!saveName.trim()) return;
         
@@ -74,26 +69,34 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
         }
     };
 
+    const deleteSingleHistoryItem = (indexToRemove: number) => {
+        const newHistory = [...history];
+        newHistory.splice(indexToRemove, 1);
+        setHistory(newHistory);
+    };
+
     return (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-[#060816]/80 backdrop-blur-md" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-[#050816]/70 backdrop-blur-sm" />
 
+            {/* Glassmorphism Main Container */}
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-4xl bg-[#0B1120] border border-slate-700/60 shadow-[0_0_50px_rgba(34,211,238,0.1)] rounded-2xl overflow-hidden flex flex-col max-h-[85vh]"
+                className="relative w-full max-w-4xl bg-[#0f172a]/90 backdrop-blur-2xl border border-white/10 shadow-[0_0_50px_rgba(34,211,238,0.15)] rounded-3xl overflow-hidden flex flex-col max-h-[85vh]"
             >
                 <AnimatePresence>
                     {showSaveDialog && (
                         <motion.div 
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#060816]/90 backdrop-blur-sm"
+                            className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#050816]/70 backdrop-blur-md"
                         >
+                            {/* Glassmorphism Save Dialog */}
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                className="w-full max-w-sm bg-slate-900 border border-emerald-500/30 p-6 rounded-2xl shadow-[0_0_40px_rgba(16,185,129,0.15)] flex flex-col"
+                                className="w-full max-w-sm bg-[#0f172a]/90 backdrop-blur-2xl border border-emerald-500/30 p-6 rounded-3xl shadow-[0_0_40px_rgba(16,185,129,0.15)] flex flex-col"
                             >
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
+                                    <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-400">
                                         <Save size={18} />
                                     </div>
                                     <h3 className="text-sm font-bold text-slate-100 font-mono uppercase tracking-widest">Simpan Arsip</h3>
@@ -105,7 +108,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                     type="text"
                                     value={saveName}
                                     onChange={(e) => setSaveName(e.target.value)}
-                                    className="w-full bg-[#050816] border border-slate-700 rounded-xl px-4 py-3 text-xs text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500/50 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)] mb-6 placeholder-slate-600 transition-colors"
+                                    className="w-full bg-[#050816]/50 border border-white/10 rounded-xl px-4 py-3 text-xs text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500/50 shadow-inner mb-6 placeholder-slate-600 transition-colors"
                                     placeholder="Nama arsip..."
                                     autoFocus
                                     onKeyDown={(e) => e.key === 'Enter' && confirmSave()}
@@ -113,13 +116,13 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                 <div className="flex gap-3 justify-end mt-auto">
                                     <button 
                                         onClick={() => setShowSaveDialog(false)} 
-                                        className="px-5 py-2.5 rounded-xl text-[10px] font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors uppercase tracking-widest"
+                                        className="px-5 py-2.5 rounded-xl text-[10px] font-bold text-slate-400 border border-white/10 hover:text-white hover:bg-white/10 transition-all uppercase tracking-widest"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         onClick={confirmSave} 
-                                        className="px-5 py-2.5 rounded-xl text-[10px] font-bold text-[#050816] bg-emerald-400 hover:bg-emerald-300 transition-colors uppercase tracking-widest flex items-center gap-2 shadow-[0_0_15px_rgba(52,211,153,0.4)]"
+                                        className="px-5 py-2.5 rounded-xl text-[10px] font-bold text-[#050816] bg-emerald-400 hover:bg-emerald-300 transition-all uppercase tracking-widest flex items-center gap-2 shadow-[0_0_15px_rgba(52,211,153,0.4)]"
                                     >
                                         Konfirmasi
                                     </button>
@@ -130,25 +133,25 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                 </AnimatePresence>
 
                 {/* Header Tabs */}
-                <div className="p-5 border-b border-slate-800 bg-slate-900/50">
+                <div className="p-5 border-b border-white/10 bg-white/5">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-cyan-500/10 rounded-lg text-cyan-400"><BarChart2 size={20} /></div>
+                            <div className="p-2 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400"><BarChart2 size={20} /></div>
                             <div>
                                 <h2 className="text-lg font-bold text-slate-100 font-mono tracking-wide">PERFORMANCE MATRIX</h2>
-                                <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Dual-Storage Analytics</p>
+                                <p className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">Dual-Storage Analytics</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="p-2 text-slate-400 hover:text-rose-400"><X size={20} /></button>
+                        <button onClick={onClose} className="p-2 bg-white/5 rounded-xl border border-white/10 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all"><X size={20} /></button>
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={() => setActiveTab('current')} className={`px-4 py-2 text-[10px] font-bold uppercase rounded-lg transition-colors ${activeTab === 'current' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}>Sesi Aktif ({history.length})</button>
-                        <button onClick={() => setActiveTab('global')} className={`px-4 py-2 text-[10px] font-bold uppercase rounded-lg transition-colors ${activeTab === 'global' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}>Arsip Global ({globalHistory.length})</button>
+                        <button onClick={() => setActiveTab('current')} className={`px-4 py-2 text-[10px] font-bold uppercase rounded-xl transition-all border ${activeTab === 'current' ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400 shadow-inner' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'}`}>Sesi Aktif ({history.length})</button>
+                        <button onClick={() => setActiveTab('global')} className={`px-4 py-2 text-[10px] font-bold uppercase rounded-xl transition-all border ${activeTab === 'global' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 shadow-inner' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'}`}>Arsip Global ({globalHistory.length})</button>
                     </div>
                 </div>
 
                 {/* Body Content */}
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-[#050816]/30">
                     
                     {/* TAB 1: CURRENT SESSION */}
                     {activeTab === 'current' && (
@@ -161,7 +164,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                             ) : (
                                 <>
                                     {/* Kesimpulan Analisis */}
-                                    <div className="bg-slate-900/50 border border-slate-800/80 p-5 rounded-2xl relative overflow-hidden shadow-inner">
+                                    <div className="bg-white/5 border border-white/10 p-5 rounded-2xl relative overflow-hidden shadow-inner backdrop-blur-md">
                                         <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
                                         <div className="flex items-center gap-2 mb-4">
                                             <Info size={16} className="text-cyan-400" />
@@ -170,7 +173,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                         
                                         <div className="text-xs text-slate-300 leading-relaxed">
                                             {history.length === 1 ? (
-                                                <div className="p-3 bg-[#050816] rounded-xl border border-slate-800/50 text-slate-400 italic">
+                                                <div className="p-3 bg-[#050816]/50 rounded-xl border border-white/5 text-slate-400 italic">
                                                     Sistem membutuhkan minimal dua algoritma untuk melakukan perbandingan. Silakan jalankan algoritma lain pada rintangan yang sama.
                                                 </div>
                                             ) : (
@@ -191,12 +194,12 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                                 Kecepatan pemrosesan dipimpin oleh <b className={algorithmDetails[fastest.algo]?.color}>{algorithmDetails[fastest.algo]?.title || fastest.algo}</b> yang menyelesaikan pencarian dalam waktu <b>{fastest.time < 0.01 ? "< 0.01" : fastest.time.toFixed(2)} ms</b>. Sangat ideal untuk sistem yang membutuhkan respons instan.
                                                             </p>
                                                             {!allSamePath ? (
-                                                                <div className="p-3 bg-rose-500/5 border border-rose-500/20 rounded-xl">
+                                                                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl backdrop-blur-sm">
                                                                     <span className="text-rose-400 font-bold block mb-1">3. Jarak Rute Terpendek</span>
                                                                     Terdapat perbedaan jalur antar algoritma. <b className={algorithmDetails[shortestPath.algo]?.color}>{algorithmDetails[shortestPath.algo]?.title || shortestPath.algo}</b> berhasil menemukan rute paling akurat dan terpendek dengan total <b>{shortestPath.path} langkah</b>.
                                                                 </div>
                                                             ) : (
-                                                                <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-emerald-100/70">
+                                                                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-100/70 backdrop-blur-sm">
                                                                     <span className="text-emerald-400 font-bold block mb-1">3. Jarak Rute Terpendek</span>
                                                                     Seluruh algoritma berhasil menemukan rute terpendek yang sama persis, yaitu <b>{history[0].path} langkah</b>.
                                                                 </div>
@@ -209,32 +212,32 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                     </div>
 
                                     {/* Tabel Riwayat Sesi Aktif */}
-                                    <div className="border border-slate-800/80 rounded-2xl overflow-hidden bg-[#050816]/50">
+                                    <div className="border border-white/10 rounded-2xl overflow-hidden bg-[#050816]/50 shadow-inner">
                                         <div className="overflow-x-auto custom-scrollbar">
                                             <div className="min-w-[500px]">
                                                 
                                                 {/* Header Tabel */}
-                                                <div className="bg-[#0B1120] py-3 px-4 border-b border-slate-800/80 grid grid-cols-12 gap-2 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                                <div className="bg-white/5 py-3 px-4 border-b border-white/10 grid grid-cols-12 gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                                                     <div className="col-span-4">Algoritma</div>
                                                     <div className="col-span-2 text-right">Cek Blok</div>
                                                     <div className="col-span-2 text-right">Jarak Rute</div>
-                                                    <div className="col-span-3 text-right">Waktu (ms)</div>
-                                                    <div className="col-span-1 text-center">Aksi</div>
+                                                    <div className="col-span-2 text-right">Waktu (ms)</div>
+                                                    <div className="col-span-2 text-center">Aksi</div>
                                                 </div>
                                                 
                                                 {/* Isi Tabel */}
                                                 <div className="p-2 space-y-1">
                                                     {history.map((record, idx) => (
-                                                        <div key={idx} className={`grid grid-cols-12 gap-2 items-center px-2 py-2 rounded-xl text-xs font-mono ${idx === history.length - 1 ? 'bg-slate-800/50 border border-slate-700/50' : 'hover:bg-slate-800/30'}`}>
+                                                        <div key={idx} className={`grid grid-cols-12 gap-2 items-center px-2 py-2 rounded-xl text-xs font-mono transition-all ${idx === history.length - 1 ? 'bg-cyan-500/10 border border-cyan-500/30' : 'hover:bg-white/5 border border-transparent'}`}>
                                                             <div className="col-span-4 flex items-center gap-2">
                                                                 <Cpu size={12} className={algorithmDetails[record.algo]?.color || "text-slate-400"} />
                                                                 <span className={`font-bold uppercase ${algorithmDetails[record.algo]?.color || "text-slate-200"}`}>{algorithmDetails[record.algo]?.title || record.algo}</span>
                                                             </div>
                                                             <div className="col-span-2 text-right text-cyan-400 font-bold">{record.visited}</div>
                                                             <div className="col-span-2 text-right text-emerald-400 font-bold">{record.path}</div>
-                                                            <div className="col-span-3 text-right text-amber-400 font-bold">{record.time < 0.01 ? '< 0.01' : record.time.toFixed(2)}</div>
+                                                            <div className="col-span-2 text-right text-amber-400 font-bold">{record.time < 0.01 ? '< 0.01' : record.time.toFixed(2)}</div>
                                                             
-                                                            <div className="col-span-1 flex justify-center">
+                                                            <div className="col-span-2 flex justify-center gap-1.5">
                                                                 <button 
                                                                     onClick={() => {
                                                                         setAlgorithm(record.algo); 
@@ -245,10 +248,17 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                                         onClose();                 
                                                                         setTimeout(() => { executeRun(); }, 350); 
                                                                     }}
-                                                                    className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/30 text-cyan-400 rounded transition-colors"
+                                                                    className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/30 text-cyan-400 rounded-lg transition-colors border border-cyan-500/20"
                                                                     title="Jalankan Ulang Algoritma Ini"
                                                                 >
                                                                     <Play size={10} fill="currentColor" />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => deleteSingleHistoryItem(idx)}
+                                                                    className="p-1.5 bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 rounded-lg transition-colors border border-rose-500/20"
+                                                                    title="Hapus Catatan Ini"
+                                                                >
+                                                                    <Trash2 size={10} />
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -273,7 +283,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                             ) : (
                                 <>
                                     {/* Action Bar Multiple Delete */}
-                                    <div className="flex justify-between items-center p-3 bg-slate-900/50 border border-slate-800/80 rounded-xl">
+                                    <div className="flex justify-between items-center p-3 bg-white/5 border border-white/10 rounded-xl backdrop-blur-md">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input 
                                                 type="checkbox" 
@@ -285,9 +295,9 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                         setSelectedGroups(globalHistory.map(g => g.id));
                                                     }
                                                 }}
-                                                className="w-4 h-4 accent-cyan-500 rounded bg-slate-800 border-slate-700 cursor-pointer"
+                                                className="w-4 h-4 accent-emerald-500 rounded bg-[#050816] border-white/10 cursor-pointer"
                                             />
-                                            <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+                                            <span className="text-[10px] text-slate-300 uppercase tracking-widest font-bold">
                                                 Pilih Semua ({selectedGroups.length}/{globalHistory.length})
                                             </span>
                                         </label>
@@ -304,7 +314,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
 
                                     {/* List Arsip */}
                                     {globalHistory.map(group => (
-                                        <div key={group.id} className={`p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-colors border ${selectedGroups.includes(group.id) ? 'bg-cyan-500/5 border-cyan-500/50' : 'bg-slate-900/40 border-slate-800/80'}`}>
+                                        <div key={group.id} className={`p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all border backdrop-blur-md ${selectedGroups.includes(group.id) ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-white/5 border-white/10'}`}>
                                             <div className="flex gap-3 items-start w-full md:w-auto flex-1">
                                                 <input 
                                                     type="checkbox"
@@ -314,12 +324,12 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                             prev.includes(group.id) ? prev.filter(id => id !== group.id) : [...prev, group.id]
                                                         )
                                                     }}
-                                                    className="w-4 h-4 mt-1 accent-cyan-500 rounded bg-slate-800 border-slate-700 cursor-pointer"
+                                                    className="w-4 h-4 mt-1 accent-emerald-500 rounded bg-[#050816] border-white/10 cursor-pointer"
                                                 />
                                                 <div>
-                                                    <h4 className="text-sm font-bold text-white">{group.name}</h4>
-                                                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">{group.date} • Map Template: <span className="text-cyan-400 uppercase font-bold">{group.template}</span></p>
-                                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-400 font-mono">
+                                                    <h4 className="text-sm font-bold text-slate-100">{group.name}</h4>
+                                                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{group.date} • Map Template: <span className="text-emerald-400 uppercase font-bold">{group.template}</span></p>
+                                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-400 font-mono bg-[#050816]/50 p-2 rounded-lg border border-white/5">
                                                         {group.records.map((rec, rIdx) => (
                                                             <span key={rIdx}>
                                                                 <b className={algorithmDetails[rec.algo]?.color}>{rec.algo.toUpperCase()}</b> ({rec.path}L / {rec.time.toFixed(1)}ms)
@@ -338,13 +348,13 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                         setIsSessionSaved(true); 
                                                         setActiveTab('current');
                                                     }}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
                                                 >
                                                     <FolderOpen size={12} /> Muat
                                                 </button>
                                                 <button 
                                                     onClick={() => deleteSingleGroup(group.id)}
-                                                    className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl transition-colors"
+                                                    className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl transition-colors"
                                                     title="Hapus Grup Ini"
                                                 >
                                                     <Trash2 size={12} />
@@ -359,14 +369,24 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                 </div>
 
                 {/* Footer Controls */}
-                <div className="p-5 border-t border-slate-800 bg-slate-900/50 flex gap-3">
+                <div className="p-5 border-t border-white/10 bg-white/5 flex gap-3">
                     {activeTab === 'current' && history.length > 0 && !isSessionSaved && (
-                        <button onClick={handleOpenSaveDialog} className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/20 uppercase transition-colors">
+                        <button onClick={handleOpenSaveDialog} className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/20 uppercase transition-all shadow-inner">
                             <Save size={14} /> Simpan Sesi
                         </button>
                     )}
-                    <button onClick={activeTab === 'current' ? clearHistory : clearGlobalHistory} className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg hover:bg-rose-500/20 uppercase transition-colors ml-auto">
-                        <Trash2 size={14} /> {activeTab === 'current' ? 'Hapus Sesi Aktif' : 'Kosongkan Arsip'}
+                    
+                    <button 
+                        onClick={() => {
+                            if (activeTab === 'current') {
+                                if (confirm("Yakin ingin menghapus seluruh riwayat di sesi aktif?")) clearHistory();
+                            } else {
+                                if (confirm("Yakin ingin mengosongkan seluruh arsip global? (Tidak bisa dikembalikan)")) clearGlobalHistory();
+                            }
+                        }} 
+                        className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl hover:bg-rose-500/20 uppercase transition-all ml-auto shadow-inner"
+                    >
+                        <Trash2 size={14} /> {activeTab === 'current' ? 'Kosongkan Sesi Aktif' : 'Kosongkan Arsip Global'}
                     </button>
                 </div>
             </motion.div>
