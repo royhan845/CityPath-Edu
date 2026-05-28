@@ -31,11 +31,14 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
     const [isMobile, setIsMobile] = useState(false);
     const [showReportModal, setShowReportModal] = useState(false);
     const [showTutorialModal, setShowTutorialModal] = useState(false);
+    
+    const [isInitialized, setIsInitialized] = useState(false);
 
     const { 
         setStats, addHistory, algorithm, setLiveText,
         history, globalHistory, setHistory, setGlobalHistory,
-        restoredMapData
+        restoredMapData, 
+        executeClearPath
     } = useSimulationStore();
 
     useEffect(() => {
@@ -67,12 +70,22 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
         
         const localHist = localStorage.getItem('citypath_global_history_v2'); 
         if (localHist) { try { setGlobalHistory(JSON.parse(localHist)); } catch (e) { } }
+        
+        setIsInitialized(true);
     }, [setHistory, setGlobalHistory]);
 
     useEffect(() => {
-        sessionStorage.setItem('citypath_session_history', JSON.stringify(history));
-        localStorage.setItem('citypath_global_history_v2', JSON.stringify(globalHistory));
-    }, [history, globalHistory]);
+        if (isInitialized) {
+            sessionStorage.setItem('citypath_session_history', JSON.stringify(history));
+            localStorage.setItem('citypath_global_history_v2', JSON.stringify(globalHistory));
+        }
+    }, [history, globalHistory, isInitialized]);
+
+    useEffect(() => {
+        if (isInitialized) {
+            executeClearPath();
+        }
+    }, [algorithm, executeClearPath, isInitialized]);
 
     const handleAnimationFinish = useCallback((visited: number, path: number, time: number, currentGridData?: any) => {
         const currentAlgo = useSimulationStore.getState().algorithm;

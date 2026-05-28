@@ -26,7 +26,7 @@ interface PathfindingGridProps {
 export default function PathfindingGrid({ isMobile, restoredMapData, onFinishAnimation }: PathfindingGridProps) {
     const gridOffsetZ = isMobile ? -4 : 0;
 
-    const { drawMode, rotationStep, setRotationStep, clearBoardTrigger, playbackStatus, templateId } = useSimulationStore();
+    const { drawMode, rotationStep, setRotationStep, clearBoardTrigger, clearPathTrigger, playbackStatus, templateId } = useSimulationStore();
 
     const [nodes, setNodes] = useState<number[]>(() => {
         const initial = Array(GRID_SIZE * GRID_SIZE).fill(0);
@@ -68,6 +68,12 @@ export default function PathfindingGrid({ isMobile, restoredMapData, onFinishAni
             setNodeRotations({}); setSelectedNodeId(null);
         }
     }, [clearBoardTrigger]);
+
+    useEffect(() => {
+        if (clearPathTrigger > 0) {
+            resetPlaybackState();
+        }
+    }, [clearPathTrigger, resetPlaybackState]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {

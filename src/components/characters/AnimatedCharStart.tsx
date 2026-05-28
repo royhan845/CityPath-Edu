@@ -12,10 +12,11 @@ interface AnimatedCharProps {
     path: number[];
     rotStep: number;
     isPaused: boolean;
+    skipTrigger: number;
     onNear: () => void;
 }
 
-export default function AnimatedCharStart({ startNode, path, rotStep, isPaused, onNear }: AnimatedCharProps) {
+export default function AnimatedCharStart({ startNode, path, rotStep, isPaused, skipTrigger, onNear }: AnimatedCharProps) {
     const groupRef = useRef<THREE.Group>(null!);
     // Load model & ambil animasinya
     const { scene, animations } = useGLTF("/models/character/character-male-d.glb");
@@ -88,7 +89,7 @@ export default function AnimatedCharStart({ startNode, path, rotStep, isPaused, 
         }
     };
 
-    // Kalkulasi Koordinat Start (Sumbu rotasi disesuaikan agar proporsional)
+    // Kalkulasi Koordinat Start
     const startX = Math.floor(startNode / GRID_SIZE) - GRID_SIZE / 2;
     const startZ = (startNode % GRID_SIZE) - GRID_SIZE / 2;
 
@@ -124,6 +125,28 @@ export default function AnimatedCharStart({ startNode, path, rotStep, isPaused, 
         }
     }, [isPaused]);
 
+    // SINKRONISASI LOGIKA SKIP ANIMASI (TELEPORTASI)
+    useEffect(() => {
+        if (skipTrigger > 0 && path.length > 0 && !hasArrived.current && groupRef.current) {
+            // Ambil node terakhir dari rute
+            const finalNode = path[path.length - 1];
+            const finalX = Math.floor(finalNode / GRID_SIZE) - GRID_SIZE / 2;
+            const finalZ = (finalNode % GRID_SIZE) - GRID_SIZE / 2;
+
+            // Teleportasi karakter langsung ke tujuan akhir
+            groupRef.current.position.set(finalX, SURFACE_Y, finalZ);
+            
+            // Matikan state berjalan
+            targetPos.current = null;
+            setPathIndex(path.length - 1);
+            playAnim("idle");
+
+            // Picu status selesai
+            hasArrived.current = true;
+            playSound("/sounds/success.mp3", 0.7); 
+            onNear();
+        }
+    }, [skipTrigger, path, onNear]);
 
     useFrame((state, delta) => {
         if (!targetPos.current || !groupRef.current || isPaused) return;

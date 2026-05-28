@@ -5,6 +5,7 @@ import ModelLoader from "../shared/ModelLoader"
 import AnimatedCharStart from "../characters/AnimatedCharStart"
 import AnimatedCharEnd from "../characters/AnimatedCharEnd"
 import { BUILDINGS, GRID_SIZE, SURFACE_Y } from "../../config"
+import { useSimulationStore } from "../../stores/useSimulationStore"
 
 interface BuildingsProps {
     nodes: number[];
@@ -20,6 +21,8 @@ export default function Buildings({
     nodes, nodeRotations, selectedNodeId, walkPath, isCharNear, playbackStatus, onNear
 }: BuildingsProps) {
     
+    const { skipTrigger } = useSimulationStore();
+
     const renderModels = useMemo(() => {
         const modelsToRender = []
         let id = 0;
@@ -30,7 +33,6 @@ export default function Buildings({
                 const posX = x - GRID_SIZE / 2; 
                 const posZ = z - GRID_SIZE / 2;
                 const rStep = nodeRotations[id] || 0;
-                // Jika sedang dipilih, angkat sedikit ke atas agar terlihat menonjol
                 const yPos = (id === selectedNodeId) ? SURFACE_Y + 0.05 : SURFACE_Y;
 
                 // 1. RENDER GEDUNG (ID >= 7)
@@ -61,7 +63,14 @@ export default function Buildings({
                 if (status === 1) {
                     modelsToRender.push(
                         <group key={`start-anim-${id}`} raycast={() => null}>
-                            <AnimatedCharStart startNode={id} path={walkPath} rotStep={rStep} onNear={onNear} isPaused={playbackStatus === 'paused'} />
+                            <AnimatedCharStart 
+                                startNode={id} 
+                                path={walkPath} 
+                                rotStep={rStep} 
+                                onNear={onNear} 
+                                isPaused={playbackStatus === 'paused'} 
+                                skipTrigger={skipTrigger}
+                            />
                         </group>
                     )
                 }
@@ -77,7 +86,7 @@ export default function Buildings({
             }
         }
         return modelsToRender
-    }, [nodes, nodeRotations, selectedNodeId, walkPath, isCharNear, playbackStatus, onNear]);
+    }, [nodes, nodeRotations, selectedNodeId, walkPath, isCharNear, playbackStatus, onNear, skipTrigger]); 
 
     return <>{renderModels}</>;
 }

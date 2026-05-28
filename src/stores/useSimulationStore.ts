@@ -113,7 +113,6 @@ export const useSimulationStore = create<SimulationState>((set) => ({
 
     interactionMode: 'camera',
 
-    setAlgorithm: (val) => set({ algorithm: val }),
     setDrawMode: (val) => set({ drawMode: val }),
     setRotationStep: (val) => set((state) => ({ rotationStep: typeof val === 'function' ? val(state.rotationStep) : val })),
     setTemplateId: (val) => set({ templateId: val }),
@@ -133,16 +132,29 @@ export const useSimulationStore = create<SimulationState>((set) => ({
 
     setInteractionMode: (val) => set({ interactionMode: val }),
     
-    addHistory: (record) => set((state) => {
-        // 1. PENGECEKAN KONSISTENSI MAP (Auto-Archive)
-        if (state.history.length > 0) {
-            const prevNodes = JSON.stringify(state.history[0].mapData?.nodes || []);
-            const currNodes = JSON.stringify(record.mapData?.nodes || []);
+    setAlgorithm: (val) => set((state) => ({ 
+        algorithm: val,
+        stopTrigger: state.stopTrigger + 1,
+        clearPathTrigger: state.clearPathTrigger + 1,
+        playbackStatus: 'idle',
+        liveText: `Algoritma diubah ke ${val.toUpperCase()}. Sistem Siap.`
+    })),
 
-            if (prevNodes !== currNodes) {
+    addHistory: (record) => set((state) => {
+        if (state.history.length > 0) {
+            const getMapSignature = (data: any) => {
+                if (!data || !Array.isArray(data.nodes)) return null;
+                
+                return data.nodes.map((n: number) => (n === 1 || n === 2 || n === 3) ? n : 0).join('');
+            };
+            
+            const prevSig = getMapSignature(state.history[0].mapData);
+            const currSig = getMapSignature(record.mapData);
+
+            if (prevSig !== null && currSig !== null && prevSig !== currSig) {
                 const autoSavedGroup: GlobalLogGroup = {
                     id: Date.now().toString(),
-                    name: `Auto-Save (Perubahan Map)`,
+                    name: `Auto-Save (Perubahan Rintangan)`,
                     date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
                     template: state.templateId || 'custom',
                     records: [...state.history]
@@ -150,18 +162,16 @@ export const useSimulationStore = create<SimulationState>((set) => ({
                 
                 return { 
                     globalHistory: [autoSavedGroup, ...state.globalHistory],
-                    history: [record] 
+                    history: [record]
                 };
             }
         }
 
-        // 2. PENGECEKAN DUPLIKASI (Hanya berjalan jika map-nya sama persis)
         const isDuplicate = state.history.some(
             (h) => h.algo === record.algo && h.visited === record.visited && h.path === record.path
         );
         if (isDuplicate) return state;
 
-        // 3. JIKA MAP SAMA DAN TIDAK DUPLIKAT, TAMBAHKAN KE TABEL
         return { history: [...state.history, record] };
     }),
     
@@ -172,8 +182,19 @@ export const useSimulationStore = create<SimulationState>((set) => ({
 
     executeRun: () => set((s) => ({ runTrigger: s.runTrigger + 1, playbackStatus: 'playing' })),
     executeSkip: () => set((s) => ({ skipTrigger: s.skipTrigger + 1 })),
-    executeClearPath: () => set((s) => ({ clearPathTrigger: s.clearPathTrigger + 1, playbackStatus: 'idle' })),
-    executeClearBoard: () => set((s) => ({ clearBoardTrigger: s.clearBoardTrigger + 1, playbackStatus: 'idle' })),
+    
+    executeClearPath: () => set((s) => ({ 
+        stopTrigger: s.stopTrigger + 1, 
+        clearPathTrigger: s.clearPathTrigger + 1, 
+        playbackStatus: 'idle' 
+    })),
+    
+    executeClearBoard: () => set((s) => ({ 
+        stopTrigger: s.stopTrigger + 1, 
+        clearBoardTrigger: s.clearBoardTrigger + 1, 
+        playbackStatus: 'idle' 
+    })),
+    
     executeStepForward: () => set((s) => ({ stepForwardTrigger: s.stepForwardTrigger + 1, playbackStatus: 'paused' })),
     executeStepBackward: () => set((s) => ({ stepBackwardTrigger: s.stepBackwardTrigger + 1, playbackStatus: 'paused' })),
     executeStop: () => set((s) => ({ stopTrigger: s.stopTrigger + 1, playbackStatus: 'idle' })),

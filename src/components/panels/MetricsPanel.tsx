@@ -58,7 +58,12 @@ export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boo
 
                 <div className="p-4 md:p-5 border-b border-white/10 bg-white/5">
                     <label className="text-[10px] text-slate-400 font-bold tracking-widest uppercase block mb-2">Pilih Algoritma</label>
-                    <select disabled={playbackStatus !== 'idle'} className="w-full bg-[#0f172a]/80 text-sm font-medium text-white border border-white/10 rounded-xl px-3 py-3 outline-none focus:border-cyan-500 transition-all cursor-pointer disabled:opacity-50 appearance-none">
+                    <select 
+                        value={algorithm}
+                        onChange={(e) => setAlgorithm(e.target.value)}
+                        disabled={playbackStatus !== 'idle'} 
+                        className="w-full bg-[#0f172a]/80 text-sm font-medium text-white border border-white/10 rounded-xl px-3 py-3 outline-none focus:border-cyan-500 transition-all cursor-pointer disabled:opacity-50 appearance-none"
+                    >
                         <option value="astar">A* (A-Star) Search</option>
                         <option value="greedy">Greedy Best-First</option>
                         <option value="dijkstra">Dijkstra's Algorithm</option>

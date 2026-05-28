@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, BarChart2, Activity, Trash2, Cpu, Save, Play, FolderOpen, Archive, Info } from "lucide-react"
+import { X, BarChart2, Activity, Trash2, Cpu, Save, Play, FolderOpen, Archive, Info, AlertTriangle } from "lucide-react"
 import { useSimulationStore, GlobalLogGroup } from "../../stores/useSimulationStore"
 
 export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => void }) {
@@ -15,14 +15,20 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
     const [activeTab, setActiveTab] = useState<'current' | 'global'>('current');
     const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
     
-    const [isSessionSaved, setIsSessionSaved] = useState(false);
-    
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [saveName, setSaveName] = useState("");
 
-    useEffect(() => {
-        setIsSessionSaved(false);
-    }, [history.length]);
+    const isSessionSaved = globalHistory.some(
+        group => JSON.stringify(group.records) === JSON.stringify(history)
+    );
+
+    const [deleteDialog, setDeleteDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        actionType: 'clearCurrent' | 'clearGlobal' | 'singleCurrent' | 'singleGlobal' | 'selectedGlobal';
+        targetId?: string | number;
+    }>({ isOpen: false, title: "", message: "", actionType: 'clearCurrent' });
 
     const algorithmDetails: Record<string, { title: string, color: string }> = {
         astar: { title: "A* Search", color: "text-emerald-400" },
@@ -50,47 +56,86 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
         };
         
         addGlobalHistory(newGroup);
-        setIsSessionSaved(true);
         setShowSaveDialog(false);
         setActiveTab('global');
     };
 
-    const deleteSingleGroup = (id: string) => {
-        if (confirm("Hapus data eksperimen ini dari arsip?")) {
-            setGlobalHistory(globalHistory.filter(g => g.id !== id));
-            setSelectedGroups(prev => prev.filter(selectedId => selectedId !== id));
+    const executeDeleteAction = () => {
+        switch(deleteDialog.actionType) {
+            case 'clearCurrent':
+                clearHistory();
+                break;
+                
+            case 'clearGlobal':
+                if (isSessionSaved) {
+                    clearHistory();
+                }
+                clearGlobalHistory();
+                setSelectedGroups([]);
+                break;
+                
+            case 'singleCurrent':
+                if (typeof deleteDialog.targetId === 'number') {
+                    const newHistory = [...history];
+                    newHistory.splice(deleteDialog.targetId, 1);
+                    setHistory(newHistory);
+                }
+                break;
+                
+            case 'singleGlobal':
+                if (typeof deleteDialog.targetId === 'string') {
+                    const groupToDelete = globalHistory.find(g => g.id === deleteDialog.targetId);
+                    if (groupToDelete && JSON.stringify(groupToDelete.records) === JSON.stringify(history)) {
+                        clearHistory();
+                    }
+                    
+                    setGlobalHistory(globalHistory.filter(g => g.id !== deleteDialog.targetId));
+                    setSelectedGroups(prev => prev.filter(selectedId => selectedId !== deleteDialog.targetId));
+                }
+                break;
+                
+            case 'selectedGlobal':
+                const groupsToDelete = globalHistory.filter(g => selectedGroups.includes(g.id));
+                const isLoadedGroupSelected = groupsToDelete.some(g => JSON.stringify(g.records) === JSON.stringify(history));
+                
+                if (isLoadedGroupSelected) {
+                    clearHistory();
+                }
+                
+                setGlobalHistory(globalHistory.filter(g => !selectedGroups.includes(g.id)));
+                setSelectedGroups([]);
+                break;
         }
+        setDeleteDialog({ ...deleteDialog, isOpen: false });
     };
 
-    const deleteSelectedGroups = () => {
-        if (confirm(`Hapus ${selectedGroups.length} eksperimen terpilih?`)) {
-            setGlobalHistory(globalHistory.filter(g => !selectedGroups.includes(g.id)));
-            setSelectedGroups([]);
-        }
+    const triggerDeleteSingleGroup = (id: string) => {
+        setDeleteDialog({ isOpen: true, title: "Hapus Arsip", message: "Hapus data eksperimen ini dari arsip secara permanen?", actionType: 'singleGlobal', targetId: id });
     };
 
-    const deleteSingleHistoryItem = (indexToRemove: number) => {
-        const newHistory = [...history];
-        newHistory.splice(indexToRemove, 1);
-        setHistory(newHistory);
+    const triggerDeleteSelectedGroups = () => {
+        setDeleteDialog({ isOpen: true, title: "Hapus Masal", message: `Hapus ${selectedGroups.length} eksperimen terpilih? Data tidak bisa dikembalikan.`, actionType: 'selectedGlobal' });
+    };
+
+    const triggerDeleteSingleHistoryItem = (index: number) => {
+        setDeleteDialog({ isOpen: true, title: "Hapus Rekam Jejak", message: "Hapus catatan percobaan ini dari sesi aktif?", actionType: 'singleCurrent', targetId: index });
     };
 
     return (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-[#050816]/70 backdrop-blur-sm" />
 
-            {/* Glassmorphism Main Container */}
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 className="relative w-full max-w-4xl bg-[#0f172a]/90 backdrop-blur-2xl border border-white/10 shadow-[0_0_50px_rgba(34,211,238,0.15)] rounded-3xl overflow-hidden flex flex-col max-h-[85vh]"
             >
                 <AnimatePresence>
+                    {/* MODAL SIMPAN */}
                     {showSaveDialog && (
                         <motion.div 
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#050816]/70 backdrop-blur-md"
                         >
-                            {/* Glassmorphism Save Dialog */}
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 10 }}
                                 className="w-full max-w-sm bg-[#0f172a]/90 backdrop-blur-2xl border border-emerald-500/30 p-6 rounded-3xl shadow-[0_0_40px_rgba(16,185,129,0.15)] flex flex-col"
@@ -125,6 +170,44 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                         className="px-5 py-2.5 rounded-xl text-[10px] font-bold text-[#050816] bg-emerald-400 hover:bg-emerald-300 transition-all uppercase tracking-widest flex items-center gap-2 shadow-[0_0_15px_rgba(52,211,153,0.4)]"
                                     >
                                         Konfirmasi
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+
+                    {/* MODAL HAPUS CUSTOM */}
+                    {deleteDialog.isOpen && (
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#050816]/70 backdrop-blur-md"
+                        >
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                className="w-full max-w-sm bg-[#0f172a]/90 backdrop-blur-2xl border border-rose-500/30 p-6 rounded-3xl shadow-[0_0_40px_rgba(244,63,94,0.15)] flex flex-col"
+                            >
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-rose-500/10 rounded-xl border border-rose-500/20 text-rose-400">
+                                        <AlertTriangle size={18} />
+                                    </div>
+                                    <h3 className="text-sm font-bold text-slate-100 font-mono uppercase tracking-widest">{deleteDialog.title}</h3>
+                                </div>
+                                <p className="text-xs text-slate-400 mb-6 font-mono leading-relaxed mt-2 border-l-2 border-rose-500/30 pl-3">
+                                    {deleteDialog.message}
+                                </p>
+                                
+                                <div className="flex gap-3 justify-end mt-4">
+                                    <button 
+                                        onClick={() => setDeleteDialog({ ...deleteDialog, isOpen: false })} 
+                                        className="px-5 py-2.5 rounded-xl text-[10px] font-bold text-slate-400 border border-white/10 hover:text-white hover:bg-white/10 transition-all uppercase tracking-widest"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button 
+                                        onClick={executeDeleteAction} 
+                                        className="px-5 py-2.5 rounded-xl text-[10px] font-bold text-white bg-rose-500/80 hover:bg-rose-500 transition-all uppercase tracking-widest flex items-center gap-2 shadow-[0_0_15px_rgba(244,63,94,0.4)] border border-rose-500"
+                                    >
+                                        <Trash2 size={12} /> Eksekusi
                                     </button>
                                 </div>
                             </motion.div>
@@ -254,7 +337,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                                     <Play size={10} fill="currentColor" />
                                                                 </button>
                                                                 <button 
-                                                                    onClick={() => deleteSingleHistoryItem(idx)}
+                                                                    onClick={() => triggerDeleteSingleHistoryItem(idx)}
                                                                     className="p-1.5 bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 rounded-lg transition-colors border border-rose-500/20"
                                                                     title="Hapus Catatan Ini"
                                                                 >
@@ -304,7 +387,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
 
                                         {selectedGroups.length > 0 && (
                                             <button 
-                                                onClick={deleteSelectedGroups}
+                                                onClick={triggerDeleteSelectedGroups}
                                                 className="flex items-center gap-2 text-[10px] text-rose-400 hover:text-rose-300 font-bold uppercase tracking-widest bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/30 transition-colors"
                                             >
                                                 <Trash2 size={12} /> Hapus Terpilih
@@ -345,7 +428,12 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                     onClick={() => {
                                                         setHistory([...group.records]);
                                                         setTemplateId(group.template);
-                                                        setIsSessionSaved(true); 
+                                                        
+                                                        if (group.records.length > 0 && group.records[0].mapData) {
+                                                            setRestoredMapData(group.records[0].mapData);
+                                                            executeClearPath();
+                                                        }
+                                                        
                                                         setActiveTab('current');
                                                     }}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
@@ -353,7 +441,7 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                                                     <FolderOpen size={12} /> Muat
                                                 </button>
                                                 <button 
-                                                    onClick={() => deleteSingleGroup(group.id)}
+                                                    onClick={() => triggerDeleteSingleGroup(group.id)}
                                                     className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl transition-colors"
                                                     title="Hapus Grup Ini"
                                                 >
@@ -379,9 +467,9 @@ export default function PerformanceAnalyticsModal({ onClose }: { onClose: () => 
                     <button 
                         onClick={() => {
                             if (activeTab === 'current') {
-                                if (confirm("Yakin ingin menghapus seluruh riwayat di sesi aktif?")) clearHistory();
+                                setDeleteDialog({ isOpen: true, title: "Kosongkan Sesi", message: "Yakin ingin menghapus seluruh riwayat di sesi aktif ini secara permanen?", actionType: 'clearCurrent' });
                             } else {
-                                if (confirm("Yakin ingin mengosongkan seluruh arsip global? (Tidak bisa dikembalikan)")) clearGlobalHistory();
+                                setDeleteDialog({ isOpen: true, title: "Format Arsip Global", message: "Tindakan ini akan menghapus SELURUH arsip yang tersimpan. Data tidak bisa dikembalikan. Yakin?", actionType: 'clearGlobal' });
                             }
                         }} 
                         className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl hover:bg-rose-500/20 uppercase transition-all ml-auto shadow-inner"
