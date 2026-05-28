@@ -135,8 +135,8 @@ export default function Home() {
                 <div className="flex justify-between items-center w-full">
                     {/* Logo */}
                     <div className="font-black text-xl text-slate-100 flex items-center gap-3 tracking-tighter">
-                        <img src="/images/icon-dark.svg" alt="Icon" className="w-5 h-5 brightness-0 invert opacity-90 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-                        <div className="drop-shadow-md">CityPath<span className="text-slate-500 font-medium">Edu</span></div>
+                        <img src="/images/icon-dark.svg" alt="Icon" className="h-8 w-auto drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                        <div className="drop-shadow-md">CityPath<span className="text-cyan-400 font-bold">Edu</span></div>
                     </div>
 
                     {/* Desktop Nav */}
@@ -352,8 +352,8 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-12 w-full relative z-10">
                     <div className="max-w-sm">
                         <div className="font-black text-3xl text-slate-100 flex items-center gap-3 tracking-tighter mb-4 drop-shadow-md">
-                            <img src="/images/icon-dark.svg" alt="Logo" className="w-8 h-8 brightness-0 invert opacity-90 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
-                            <div>CityPath<span className="text-slate-600 font-medium">Edu</span></div>
+                            <img src="/images/icon-dark.svg" alt="Logo" className="h-12 md:h-14 w-auto drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]" />
+                            <div>CityPath<span className="text-cyan-400 font-bold">Edu</span></div>
                         </div>
                         <div className="text-[10px] text-cyan-400 font-mono tracking-widest uppercase mb-6 flex items-center gap-2">
                             <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-ping"></span> Simulation Environment

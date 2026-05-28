@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     siteName: "CityPath Edu",
     images: [
       {
-        url: "/images/city.png", 
+        url: "/images/icon-dark.png", 
         width: 1200,
         height: 630,
         alt: "Preview CityPath Edu 3D",

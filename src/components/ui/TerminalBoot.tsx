@@ -10,7 +10,7 @@ export default function TerminalBoot({ onComplete }: { onComplete: () => void })
             { t: "[ SYS ] Compiling heuristic nodes...", delay: 500 },
             { t: "[ SYS ] Injecting pathfinding engine...", delay: 900 },
             { t: "[ SYS ] Establishing telemetry link...", delay: 1300 },
-            { t: "[ SYS ] Simulation environment active. // STABLE", delay: 1800 },
+            { t: "[ SYS ] Simulation environment active.", delay: 1800 },
         ];
 
         sequence.forEach(({ t, delay }, i) => {
