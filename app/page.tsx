@@ -9,6 +9,7 @@ import Scene from "../src/components/scene/Scene"
 import TerminalBoot from "../src/components/ui/TerminalBoot"
 import MiniLiveVisualization from "../src/components/panels/MiniLiveVisualization"
 import HologramShowcase from "../src/components/scene/HologramShowcase"
+import InteractionModeToggle from "../src/components/panels/InteractionModeToggle";
 
 // --- GLOBAL CSS ANIMATIONS ---
 const CustomStyles = () => (
@@ -59,7 +60,8 @@ export default function Home() {
     const [isSimulating, setIsSimulating] = useState(false);
     const [isBooting, setIsBooting] = useState(false);
     const [sceneMode, setSceneMode] = useState<'tutorial' | 'report'>('tutorial');
-    const { interactionMode, setInteractionMode } = useSimulationStore();
+    
+    const { interactionMode, setInteractionMode, showTutorial, tutorialStep } = useSimulationStore();
 
     useEffect(() => {
         if (isSimulating || isBooting) document.body.style.overflow = 'hidden';
@@ -77,33 +79,24 @@ export default function Home() {
         return (
             <div className="fixed inset-0 w-full h-[100dvh] animate-in zoom-in-95 fade-in duration-700 bg-[#060816] z-50">
 
-                {/* Tombol Toggle Mode Interaksi (HANYA DI MOBILE) */}
-                <div className="md:hidden absolute top-6 left-4 z-[100] flex bg-[#0B1120]/80 backdrop-blur-md rounded-xl border border-slate-700/60 shadow-lg p-1">
-                    <button
-                        onClick={() => setInteractionMode('camera')}
-                        className={`p-2 rounded-lg transition-all ${interactionMode === 'camera' ? 'bg-cyan-500 text-[#060816]' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        <Camera size={16} />
-                    </button>
-                    <button
-                        onClick={() => setInteractionMode('draw')}
-                        className={`p-2 rounded-lg transition-all ${interactionMode === 'draw' ? 'bg-emerald-500 text-[#060816]' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        <Hand size={16} />
-                    </button>
-                </div>
+                {/* Komponen yang baru saja kita pisahkan */}
+                <InteractionModeToggle />
                 
-                {/* 1. Sembunyikan badge di HP (tambah hidden md:flex) */}
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none hidden md:flex flex-col items-center">
+                {/* 1. Sembunyikan badge di HP */}
+                <div className={`absolute top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none hidden md:flex flex-col items-center transition-all duration-500
+                     ${showTutorial ? 'opacity-30 grayscale' : ''}
+                `}>
                     <div className="glass-panel px-5 py-2 rounded-full font-mono text-[10px] tracking-widest text-cyan-400 uppercase flex items-center gap-2">
                         <Activity size={12} className="animate-pulse" /> Live Simulation Environment
                     </div>
                 </div>
                 
-                {/* 2. Buat tombol Terminate jadi icon kecil di HP */}
+                {/* 2. Tombol Terminate */}
                 <button 
                     onClick={() => setIsSimulating(false)}
-                    className="group absolute top-6 right-4 md:right-6 z-[100] glass-panel hover:bg-rose-950/20 hover:border-rose-500/30 hover:shadow-[0_0_20px_rgba(244,63,94,0.1)] text-slate-400 hover:text-rose-400 px-3 md:px-5 py-3 md:py-2.5 rounded-xl md:rounded-[4px] font-mono text-[10px] transition-all duration-300 flex items-center gap-2 uppercase tracking-widest"
+                    className={`group absolute top-6 right-4 md:right-6 z-[100] glass-panel hover:bg-rose-950/20 hover:border-rose-500/30 hover:shadow-[0_0_20px_rgba(244,63,94,0.1)] text-slate-400 hover:text-rose-400 px-3 md:px-5 py-3 md:py-2.5 rounded-xl md:rounded-[4px] font-mono text-[10px] transition-all duration-500 flex items-center gap-2 uppercase tracking-widest
+                        ${showTutorial ? 'opacity-30 grayscale pointer-events-none' : ''}
+                    `}
                 >
                     <TerminalSquare size={16} /> <span className="hidden md:inline">Terminate</span>
                 </button>

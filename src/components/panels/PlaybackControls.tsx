@@ -4,27 +4,19 @@ import { useSimulationStore } from "../../stores/useSimulationStore"
 import { FastForward, Zap, Route, Network, ArrowRightCircle, Target } from "lucide-react";
 
 export default function PlaybackControls() {
-    
     const { 
-        algorithm, playbackStatus, setPlaybackStatus, liveText, 
+        playbackStatus, setPlaybackStatus, liveText, 
         simSpeed, setSimSpeed, executeRun, executeClearPath, 
-        executeStepForward, executeStepBackward, executeStop, executeSkip
+        executeStepForward, executeStepBackward, executeStop, executeSkip,
+        showTutorial, tutorialStep
     } = useSimulationStore();
 
-    // Mapping icon menggunakan Lucide-React agar seragam dan modern
-    const getAlgoIcon = (algo: string) => {
-        switch(algo) {
-            case 'astar': return <Target size={18} className="text-emerald-400" />; 
-            case 'greedy': return <Zap size={18} className="text-yellow-400" />;
-            case 'dijkstra': return <Network size={18} className="text-cyan-400" />; 
-            case 'bfs': return <ArrowRightCircle size={18} className="text-blue-400" />;
-            case 'dfs': return <Route size={18} className="text-rose-400" />; 
-            default: return <Target size={18} className="text-slate-400" />;
-        }
-    }
-
     return (
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20 w-[90%] md:w-[600px]">
+        <div className={`absolute bottom-6 left-1/2 transform -translate-x-1/2 w-[90%] md:w-[600px] transition-all duration-300 
+            ${showTutorial && tutorialStep === 5 ? 'z-[999] pointer-events-none' : 'z-20'}
+            ${showTutorial && tutorialStep !== 5 ? 'opacity-50 grayscale pointer-events-none' : ''}
+        `}>
+            
             <div className="mb-3 text-center">
                 <span className="inline-flex items-center gap-2 bg-[#0B1120]/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-slate-800 shadow-lg">
                     <span className={`w-1.5 h-1.5 rounded-full ${playbackStatus === 'playing' ? 'bg-cyan-500 animate-pulse' : playbackStatus === 'paused' ? 'bg-amber-500' : 'bg-slate-600'}`}></span>
@@ -32,13 +24,19 @@ export default function PlaybackControls() {
                 </span>
             </div>
 
-            <div className="bg-[#0B1120]/90 backdrop-blur-xl border border-slate-700/50 p-2 md:p-3 rounded-2xl shadow-2xl flex flex-col md:flex-row items-center gap-4">
+            <div className={`bg-[#0B1120]/90 backdrop-blur-xl p-2 md:p-3 rounded-2xl flex flex-col md:flex-row items-center gap-4 transition-all duration-500
+                ${showTutorial && tutorialStep === 5 
+                    ? 'ring-2 ring-amber-400 bg-amber-400/10 shadow-[0_0_40px_rgba(251,191,36,0.3)] scale-[1.02]' 
+                    : 'border border-slate-700/50 shadow-2xl'
+                }`}
+            >
                 {playbackStatus === 'idle' ? (
                     <>
                         <div className="flex items-center gap-2 w-full md:w-auto justify-center">
                             <button onClick={executeClearPath} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors" title="Reset Jalur">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             </button>
+                            
                             <button onClick={executeRun} className="px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-[#050816] shadow-[0_0_20px_rgba(16,185,129,0.3)]">
                                 <span>▶</span> Execute
                             </button>
@@ -64,12 +62,7 @@ export default function PlaybackControls() {
                         <button 
                             onClick={executeSkip}
                             disabled={playbackStatus !== 'playing'}
-                            className={`p-2 rounded-lg transition-colors ${
-                                playbackStatus === 'playing' 
-                                ? 'text-cyan-400 hover:bg-cyan-500/20' 
-                                : 'text-slate-600 cursor-not-allowed'
-                            }`}
-                            title="Lewati Animasi"
+                            className={`p-2 rounded-lg transition-colors ${playbackStatus === 'playing' ? 'text-cyan-400 hover:bg-cyan-500/20' : 'text-slate-600 cursor-not-allowed'}`}
                         >
                             <FastForward size={20} />
                         </button>

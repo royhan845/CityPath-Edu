@@ -2,6 +2,7 @@
 
 import ModelLoader from "../shared/ModelLoader"
 import { BUILDINGS, GRID_SIZE, SURFACE_Y } from "../../config"
+import { useSimulationStore } from "../../stores/useSimulationStore"
 
 interface GhostPreviewProps {
     isAnimating: boolean;
@@ -13,27 +14,19 @@ interface GhostPreviewProps {
 }
 
 export default function GhostPreview({ isAnimating, hoveredNode, drawMode, rotationStep, selectedNodeId, nodes }: GhostPreviewProps) {
-    if (isAnimating || hoveredNode === null || drawMode === "start" || drawMode === "end") return null; 
+    const { lastHoveredNode } = useSimulationStore();
 
-    // Jika sedang dalam mode select dan sudah menunjuk objek, 
-    // kita tetap tampilkan ghost agar kamu tahu dia sedang dirotasi
-    const row = Math.floor(hoveredNode / GRID_SIZE);
-    const col = hoveredNode % GRID_SIZE;
+    const activeGhostNode = hoveredNode !== null ? hoveredNode : 
+                            (BUILDINGS[drawMode] ? lastHoveredNode : null);
+
+    if (isAnimating || activeGhostNode === null || drawMode === "select" || drawMode === "start" || drawMode === "end" || drawMode === "delete") return null; 
+
+    const row = Math.floor(activeGhostNode / GRID_SIZE);
+    const col = activeGhostNode % GRID_SIZE;
     const posX = row - GRID_SIZE / 2;
     const posZ = col - GRID_SIZE / 2;
 
-    let bldEntry = null;
-    
-    // Tentukan entry bangunan berdasarkan mode
-    if (drawMode && BUILDINGS[drawMode]) {
-        bldEntry = BUILDINGS[drawMode];
-    } else if (drawMode === "select" && selectedNodeId !== null) {
-        const bldId = nodes[selectedNodeId];
-        bldEntry = Object.values(BUILDINGS).find(b => b.id === bldId);
-        // Kalau kursor di atas gedung yang terpilih, kita jangan sembunyikan, 
-        // tapi biarkan ghost muncul untuk memberi feedback rotasi
-    }
-
+    const bldEntry = BUILDINGS[drawMode];
     if (!bldEntry) return null;
     
     const rStep = rotationStep;
@@ -52,7 +45,7 @@ export default function GhostPreview({ isAnimating, hoveredNode, drawMode, rotat
                     modelPath={bldEntry.path} 
                     position={[bldEntry.offset[0], 0, bldEntry.offset[1]]} 
                     scale={bldEntry.scale} 
-                    opacity={0.5} 
+                    opacity={0.6}
                 />
             </group>
         </group>

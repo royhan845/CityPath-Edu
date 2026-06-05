@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useGLTF } from "@react-three/drei"
 
 import GridTiles from "./GridTiles"
@@ -26,7 +26,7 @@ interface PathfindingGridProps {
 export default function PathfindingGrid({ isMobile, restoredMapData, onFinishAnimation }: PathfindingGridProps) {
     const gridOffsetZ = isMobile ? -4 : 0;
 
-    const { drawMode, rotationStep, setRotationStep, clearBoardTrigger, clearPathTrigger, playbackStatus, templateId } = useSimulationStore();
+    const { drawMode, rotationStep, setRotationStep, clearBoardTrigger, clearPathTrigger, playbackStatus, templateId, setLastHoveredNode } = useSimulationStore();
 
     const [nodes, setNodes] = useState<number[]>(() => {
         const initial = Array(GRID_SIZE * GRID_SIZE).fill(0);
@@ -48,6 +48,17 @@ export default function PathfindingGrid({ isMobile, restoredMapData, onFinishAni
         nodes, setNodes, nodeRotations, setNodeRotations, 
         selectedNodeId, setSelectedNodeId, isAnimating, resetPlaybackState
     );
+
+    const prevRotStep = useRef(rotationStep);
+    useEffect(() => {
+        if (drawMode === 'select' && selectedNodeId !== null && prevRotStep.current !== rotationStep) {
+            setNodeRotations(prev => ({
+                ...prev,
+                [selectedNodeId]: rotationStep
+            }));
+        }
+        prevRotStep.current = rotationStep;
+    }, [rotationStep, drawMode, selectedNodeId]);
 
     useEffect(() => {
         if (restoredMapData && restoredMapData.nodes) {
@@ -97,8 +108,16 @@ export default function PathfindingGrid({ isMobile, restoredMapData, onFinishAni
                 visNodes={visNodes} pathNodes={pathNodes} animStep={animStep}
                 activeNode={activeNode} hoveredNode={hoveredNode} selectedNodeId={selectedNodeId}
                 drawMode={drawMode} rotationStep={rotationStep} hasShownPopup={hasShownPopup.current}
-                onPointerDown={handlePointerDown} 
-                onPointerMove={setHoveredNode} 
+                
+                onPointerDown={(idx) => {
+                    setLastHoveredNode(idx);
+                    handlePointerDown(idx);
+                }}
+
+                onPointerMove={(nodeIdx) => {
+                    setHoveredNode(nodeIdx);
+                    setLastHoveredNode(nodeIdx);
+                }}
                 onPointerOut={() => setHoveredNode(null)}
             />
             

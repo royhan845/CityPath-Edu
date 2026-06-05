@@ -1,13 +1,31 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useSimulationStore } from "../../stores/useSimulationStore"
 import { BarChart2, X } from "lucide-react"
 
 export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boolean, onOpenReport: () => void }) {
-    const { algorithm, setAlgorithm, executeClearPath, playbackStatus, stats, hasNewReport, setHasNewReport, mobileMenuOpen, setMobileMenuOpen } = useSimulationStore();
+    const { algorithm, setAlgorithm, executeClearPath, playbackStatus, stats, hasNewReport, setHasNewReport, mobileMenuOpen, setMobileMenuOpen, showTutorial, tutorialStep } = useSimulationStore();
     
     const isOpen = mobileMenuOpen === 'metrics';
+
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const step5Ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (showTutorial) {
+            setTimeout(() => {
+                const container = scrollContainerRef.current;
+                if (!container) return;
+
+                if (tutorialStep === 4) {
+                    container.scrollTo({ top: 0, behavior: 'smooth' });
+                } else if (tutorialStep === 6 && step5Ref.current) {
+                    container.scrollTo({ top: step5Ref.current.offsetTop - 20, behavior: 'smooth' });
+                }
+            }, 300);
+        }
+    }, [tutorialStep, showTutorial]);
 
     const algorithmDetails: Record<string, { title: string, desc: string, color: string, time: string, space: string, tag: string }> = {
         astar: { title: "A* Search", color: "text-emerald-400", time: "O(E)", space: "O(V)", tag: "Optimal & Cepat", desc: "Menggunakan Heuristik untuk memprioritaskan node terdekat ke target." },
@@ -22,7 +40,7 @@ export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boo
             {isMobile && mobileMenuOpen === null && (
                 <button 
                     onClick={() => setMobileMenuOpen('metrics')}
-                    disabled={playbackStatus !== 'idle'} 
+                    disabled={playbackStatus !== 'idle' || showTutorial} 
                     className={`absolute ${playbackStatus === 'idle' ? 'bottom-[230px]' : 'bottom-[160px]'} right-4 z-50 p-3 rounded-xl shadow-lg transition-all duration-500 flex items-center gap-2 border 
                     ${playbackStatus !== 'idle' 
                         ? 'opacity-40 cursor-not-allowed grayscale bg-[#0f172a]/60 border-white/10 text-slate-400' 
@@ -31,32 +49,31 @@ export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boo
                 >
                     <span className="text-[10px] font-mono font-bold tracking-widest uppercase">Metrics</span>
                     <BarChart2 size={18} />
-                    {hasNewReport && playbackStatus === 'idle' && (
-                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-                        </span>
-                    )}
                 </button>
             )}
 
-            {/* Main Panel Glassmorphism */}
-            <div className={`absolute z-40 flex flex-col bg-[#0f172a]/60 backdrop-blur-xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
+            <div className={`absolute flex flex-col bg-[#0f172a]/60 backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
                 ${isMobile 
-                    ? `bottom-0 left-0 right-0 w-full rounded-t-3xl border-t h-[65vh] ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}` 
-                    : 'top-6 bottom-24 right-4 md:w-[260px] lg:right-6 lg:w-80 rounded-3xl border'
-                }`}
-            >
+                    ? `bottom-0 left-0 right-0 w-full rounded-t-3xl border-t ${showTutorial ? 'h-[52vh]' : 'h-[65vh]'} ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}` 
+                    : 'top-6 bottom-24 right-4 md:w-[260px] lg:right-6 lg:w-80 rounded-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)]'
+                }
+                ${showTutorial && [4, 6].includes(tutorialStep) ? 'z-[999] pointer-events-none' : 'z-40'}
+            `}>
                 {isMobile && (
                     <div className="flex justify-between items-center p-4 border-b border-white/10 bg-white/5">
                         <span className="font-bold text-slate-200 font-mono text-[10px] tracking-widest uppercase">Analytics Matrix</span>
-                        <button onClick={() => setMobileMenuOpen(null)} className="p-2 bg-white/5 text-slate-400 hover:text-rose-400 rounded-xl border border-white/5 hover:border-rose-500/30">
+                        <button onClick={() => setMobileMenuOpen(null)} className="p-2 bg-white/5 text-slate-400 hover:text-rose-400 rounded-xl border border-white/5 hover:border-rose-500/30 pointer-events-auto">
                             <X size={18} />
                         </button>
                     </div>
                 )}
 
-                <div className="p-4 md:p-5 border-b border-white/10 bg-white/5">
+                <div className={`transition-all duration-500 relative
+                    ${showTutorial && tutorialStep === 4 
+                        ? 'm-3 md:m-4 p-4 rounded-2xl ring-2 ring-emerald-400 bg-emerald-400/10 shadow-[0_0_30px_rgba(16,185,129,0.3)]' 
+                        : 'p-4 md:p-5 border-b border-white/10 bg-white/5 md:rounded-t-3xl'}
+                    ${showTutorial && tutorialStep !== 4 ? 'opacity-30 grayscale' : ''}
+                `}>
                     <label className="text-[10px] text-slate-400 font-bold tracking-widest uppercase block mb-2">Pilih Algoritma</label>
                     <select 
                         value={algorithm}
@@ -72,52 +89,54 @@ export default function MetricsPanel({ isMobile, onOpenReport }: { isMobile: boo
                     </select>
                 </div>
                 
-                <div className="p-5 flex-1 overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    <div className="flex items-start justify-between mb-3">
-                        <h3 className={`text-lg font-bold ${algorithmDetails[algorithm].color}`}>{algorithmDetails[algorithm].title}</h3>
-                        <span className="text-[9px] px-2 py-1 bg-white/10 rounded-md font-mono text-slate-300 border border-white/10">{algorithmDetails[algorithm].tag}</span>
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed mb-5">{algorithmDetails[algorithm].desc}</p>
+                <div ref={scrollContainerRef} className={`px-5 pt-3 pb-5 flex-1 overflow-y-auto relative flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${showTutorial ? 'pointer-events-auto' : ''}`}>
                     
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                        {/* Sleek Data Cards */}
-                        <div className="bg-white/5 border border-white/10 p-3 rounded-xl"><span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Time Complexity</span><span className="text-sm font-mono text-white">{algorithmDetails[algorithm].time}</span></div>
-                        <div className="bg-white/5 border border-white/10 p-3 rounded-xl"><span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Space Complexity</span><span className="text-sm font-mono text-white">{algorithmDetails[algorithm].space}</span></div>
-                    </div>
-                    
-                    <div className="border-t border-white/10 pt-5 mt-auto pb-6 md:pb-0">
-                        <label className="text-[10px] text-slate-400 font-bold tracking-widest uppercase block mb-3">Real-time Statistics</label>
-                        <div className="space-y-3 mb-4">
-                            {/* Sleek Real-time Stats */}
-                            <div className="flex justify-between items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/10"><span className="text-xs text-slate-400">Nodes Evaluated</span><span className="text-sm font-mono text-cyan-400 font-bold">{stats ? stats.visited : '-'}</span></div>
-                            <div className="flex justify-between items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/10"><span className="text-xs text-slate-400">Path Length</span><span className="text-sm font-mono text-emerald-400 font-bold">{stats ? stats.path : '-'}</span></div>
-                            <div className="flex justify-between items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/10"><span className="text-xs text-slate-400">Exec Time (ms)</span><span className="text-sm font-mono text-amber-400 font-bold">{stats ? (stats.time < 0.01 ? '< 0.01' : stats.time.toFixed(2)) : '-'}</span></div>
+                    <div className={`transition-all duration-500 ${showTutorial ? 'opacity-30 pointer-events-none' : ''}`}>
+                        <div className="flex items-start justify-between mb-3">
+                            <h3 className={`text-lg font-bold ${algorithmDetails[algorithm].color}`}>{algorithmDetails[algorithm].title}</h3>
+                            <span className="text-[9px] px-2 py-1 bg-white/10 rounded-md font-mono text-slate-300 border border-white/10">{algorithmDetails[algorithm].tag}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 leading-relaxed mb-5">{algorithmDetails[algorithm].desc}</p>
+                        
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                            <div className="bg-white/5 border border-white/10 p-3 rounded-xl"><span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Time Complexity</span><span className="text-sm font-mono text-white">{algorithmDetails[algorithm].time}</span></div>
+                            <div className="bg-white/5 border border-white/10 p-3 rounded-xl"><span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Space Complexity</span><span className="text-sm font-mono text-white">{algorithmDetails[algorithm].space}</span></div>
                         </div>
                         
+                        <div className="border-t border-white/10 pt-5 mb-4">
+                            <label className="text-[10px] text-slate-400 font-bold tracking-widest uppercase block mb-3">Real-time Statistics</label>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/10"><span className="text-xs text-slate-400">Nodes Evaluated</span><span className="text-sm font-mono text-cyan-400 font-bold">{stats ? stats.visited : '-'}</span></div>
+                                <div className="flex justify-between items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/10"><span className="text-xs text-slate-400">Path Length</span><span className="text-sm font-mono text-emerald-400 font-bold">{stats ? stats.path : '-'}</span></div>
+                                <div className="flex justify-between items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/10"><span className="text-xs text-slate-400">Exec Time (ms)</span><span className="text-sm font-mono text-amber-400 font-bold">{stats ? (stats.time < 0.01 ? '< 0.01' : stats.time.toFixed(2)) : '-'}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div ref={step5Ref} className="mt-auto pb-6 md:pb-0 pt-2">
                         <button 
                             onClick={(e) => {
                                 e.stopPropagation();
+                                if (showTutorial) return; 
+
                                 if (hasNewReport) setHasNewReport(false); 
                                 setMobileMenuOpen(null);
                                 onOpenReport();
                             }}
-                            className={`w-full py-3 pointer-events-auto relative z-50 cursor-pointer rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
-                                hasNewReport 
-                                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)] animate-pulse' 
-                                : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-                            }`}
+                            className={`w-full py-3 relative z-50 cursor-pointer rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 
+                            ${showTutorial && tutorialStep === 6 
+                                ? 'ring-2 ring-inset ring-purple-500 shadow-[inset_0_0_30px_rgba(168,85,247,0.3)] bg-purple-500/20 text-purple-300 border-transparent' 
+                                : (hasNewReport ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 animate-pulse' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10')
+                            }
+                            ${showTutorial && tutorialStep !== 6 ? 'opacity-30 grayscale' : ''}
+                            ${showTutorial ? 'pointer-events-none' : 'pointer-events-auto'}
+                            `}
                         >
-                            {hasNewReport && (
-                                <span className="relative flex h-2.5 w-2.5 mr-1">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                                </span>
-                            )}
                             Performance Analytics
                         </button>
                     </div>
-                </div>
 
+                </div>
             </div>
         </>
     )

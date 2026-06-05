@@ -26,19 +26,19 @@ interface SimulationState {
     playbackStatus: 'idle' | 'playing' | 'paused';
     liveText: string;
 
-    skipTrigger: number;
-
     stats: { visited: number, path: number, time: number } | null;
     history: HistoryRecord[];
-    
-    restoredMapData: any;
-    
     globalHistory: GlobalLogGroup[];
+    restoredMapData: any;
 
     hasNewReport: boolean;
+    lastHoveredNode: number | null;
     
+    // State Tutorial Sederhana
     showTutorial: boolean;
+    tutorialStep: number;
 
+    skipTrigger: number;
     runTrigger: number;
     clearPathTrigger: number;
     clearBoardTrigger: number;
@@ -57,17 +57,18 @@ interface SimulationState {
     setPlaybackStatus: (val: 'idle' | 'playing' | 'paused') => void;
     setLiveText: (val: string) => void;
     setStats: (stats: { visited: number, path: number, time: number } | null) => void;
+    setLastHoveredNode: (val: number | null) => void;
 
     setHistory: (history: HistoryRecord[]) => void;
     setGlobalHistory: (val: GlobalLogGroup[]) => void;
-
     addHistory: (record: HistoryRecord) => void;
     addGlobalHistory: (record: GlobalLogGroup) => void;
 
+    setTutorialStep: (step: number) => void;
     setShowTutorial: (show: boolean) => void;
+
     setHasNewReport: (val: boolean) => void;
     setRestoredMapData: (data: any) => void;
-
     setMobileMenuOpen: (menu: 'editor' | 'metrics' | null) => void;
     setInteractionMode: (mode: 'camera' | 'draw') => void;
 
@@ -91,26 +92,24 @@ export const useSimulationStore = create<SimulationState>((set) => ({
     simSpeed: 50,
     playbackStatus: 'idle',
     liveText: "Sistem Siap. Silakan bangun rintangan atau pilih template.",
-
-    skipTrigger: 0,
-    
+    lastHoveredNode: null,
     history: [],
     globalHistory: [],
-    
     stats: null,
     restoredMapData: null,
     mobileMenuOpen: null,
 
     hasNewReport: false,
     showTutorial: false,
+    tutorialStep: 0,
 
+    skipTrigger: 0,
     runTrigger: 0, 
     clearPathTrigger: 0, 
     clearBoardTrigger: 0,
     stepForwardTrigger: 0, 
     stepBackwardTrigger: 0, 
     stopTrigger: 0,
-
     interactionMode: 'camera',
 
     setDrawMode: (val) => set({ drawMode: val }),
@@ -120,16 +119,17 @@ export const useSimulationStore = create<SimulationState>((set) => ({
     setPlaybackStatus: (val) => set({ playbackStatus: val }),
     setLiveText: (val) => set({ liveText: val }),
     
-    setShowTutorial: (show) => set({ showTutorial: show }),
+    setShowTutorial: (show) => set({ showTutorial: show, tutorialStep: 0 }),
+    setTutorialStep: (step) => set({ tutorialStep: step }),
 
     setStats: (stats) => set({ stats }),
     setHasNewReport: (val) => set({ hasNewReport: val }),
+    setLastHoveredNode: (val) => set({ lastHoveredNode: val }),
     setMobileMenuOpen: (val) => set({ mobileMenuOpen: val }),
     
     setRestoredMapData: (data) => set({ restoredMapData: data }),
     setHistory: (history) => set({ history }),
     setGlobalHistory: (val) => set({ globalHistory: val }),
-
     setInteractionMode: (val) => set({ interactionMode: val }),
     
     setAlgorithm: (val) => set((state) => ({ 
@@ -144,10 +144,8 @@ export const useSimulationStore = create<SimulationState>((set) => ({
         if (state.history.length > 0) {
             const getMapSignature = (data: any) => {
                 if (!data || !Array.isArray(data.nodes)) return null;
-                
                 return data.nodes.map((n: number) => (n === 1 || n === 2 || n === 3) ? n : 0).join('');
             };
-            
             const prevSig = getMapSignature(state.history[0].mapData);
             const currSig = getMapSignature(record.mapData);
 
@@ -159,42 +157,22 @@ export const useSimulationStore = create<SimulationState>((set) => ({
                     template: state.templateId || 'custom',
                     records: [...state.history]
                 };
-                
-                return { 
-                    globalHistory: [autoSavedGroup, ...state.globalHistory],
-                    history: [record]
-                };
+                return { globalHistory: [autoSavedGroup, ...state.globalHistory], history: [record] };
             }
         }
-
-        const isDuplicate = state.history.some(
-            (h) => h.algo === record.algo && h.visited === record.visited && h.path === record.path
-        );
+        const isDuplicate = state.history.some((h) => h.algo === record.algo && h.visited === record.visited && h.path === record.path);
         if (isDuplicate) return state;
-
         return { history: [...state.history, record] };
     }),
     
     addGlobalHistory: (record) => set((state) => ({ globalHistory: [record, ...state.globalHistory] })),
-    
     clearGlobalHistory: () => set({ globalHistory: [] }),
     clearHistory: () => set({ history: [], stats: null }),
 
     executeRun: () => set((s) => ({ runTrigger: s.runTrigger + 1, playbackStatus: 'playing' })),
     executeSkip: () => set((s) => ({ skipTrigger: s.skipTrigger + 1 })),
-    
-    executeClearPath: () => set((s) => ({ 
-        stopTrigger: s.stopTrigger + 1, 
-        clearPathTrigger: s.clearPathTrigger + 1, 
-        playbackStatus: 'idle' 
-    })),
-    
-    executeClearBoard: () => set((s) => ({ 
-        stopTrigger: s.stopTrigger + 1, 
-        clearBoardTrigger: s.clearBoardTrigger + 1, 
-        playbackStatus: 'idle' 
-    })),
-    
+    executeClearPath: () => set((s) => ({ stopTrigger: s.stopTrigger + 1, clearPathTrigger: s.clearPathTrigger + 1, playbackStatus: 'idle' })),
+    executeClearBoard: () => set((s) => ({ stopTrigger: s.stopTrigger + 1, clearBoardTrigger: s.clearBoardTrigger + 1, playbackStatus: 'idle' })),
     executeStepForward: () => set((s) => ({ stepForwardTrigger: s.stepForwardTrigger + 1, playbackStatus: 'paused' })),
     executeStepBackward: () => set((s) => ({ stepBackwardTrigger: s.stepBackwardTrigger + 1, playbackStatus: 'paused' })),
     executeStop: () => set((s) => ({ stopTrigger: s.stopTrigger + 1, playbackStatus: 'idle' })),

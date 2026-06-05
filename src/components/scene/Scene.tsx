@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense, useCallback } from "react"
 import { Canvas } from "@react-three/fiber"
+import { AnimatePresence } from "framer-motion"
 
 // Import UI Panels
 import PlaybackControls from "../panels/PlaybackControls"
@@ -11,8 +12,8 @@ import LegendPanel from "../panels/LegendPanel"
 
 // Import UI Modals
 import PerformanceAnalyticsModal from "../modals/PerformanceAnalyticsModal"
-import TutorialModal from "../modals/TutorialModal"
 import LandscapeWarning from "../modals/LandscapeWarning"
+import InteractiveTutorial from "../modals/InteractiveTutorial"
 
 // Import Scene Components
 import Lighting from "./Lighting"
@@ -22,6 +23,7 @@ import Environment from "./Environment"
 // Import Core Grid
 import PathfindingGrid from "../grid/Grid"
 import { useSimulationStore } from "../../stores/useSimulationStore"
+
 
 interface SceneProps {
     initialMode?: 'tutorial' | 'report';
@@ -117,9 +119,11 @@ export default function Scene({ initialMode = 'tutorial' }: SceneProps) {
            
             <PlaybackControls />
 
-            {showTutorialModal && (
-                <TutorialModal onClose={() => setShowTutorialModal(false)} />
-            )}
+            <AnimatePresence>
+                {showTutorialModal && (
+                    <InteractiveTutorial onClose={() => setShowTutorialModal(false)} />
+                )}
+            </AnimatePresence>
 
             {showReportModal && (
                 <PerformanceAnalyticsModal onClose={() => setShowReportModal(false)} />
